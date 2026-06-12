@@ -1,0 +1,313 @@
+<!doctype html>
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"text","type":"string","label":"Tagline","default":"hello what is going on"},
+    {"id":"logoSvg","type":"string","label":"Logo SVG markup","default":""},
+    {"id":"drawDuration","type":"number","label":"Reveal duration (s)","default":1.8},
+    {"id":"strokeColor","type":"color","label":"Stroke color","default":"#0ea5e9"},
+    {"id":"fillColor","type":"color","label":"Fill color","default":"#0ea5e9"}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #fafafa;
+        font-family: "Inter", sans-serif;
+      }
+      #stage {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 100px;
+        gap: 56px;
+        position: relative;
+      }
+      #stage::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(
+            circle at 50% 35%,
+            rgba(14, 165, 233, 0.1),
+            transparent 55%
+          ),
+          repeating-linear-gradient(
+            45deg,
+            rgba(0, 0, 0, 0.02) 0 1px,
+            transparent 1px 24px
+          );
+        pointer-events: none;
+      }
+      #logo-stack {
+        position: relative;
+        width: 560px;
+        height: 560px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      #ring {
+        position: absolute;
+        width: 640px;
+        height: 640px;
+        border-radius: 50%;
+        border: 2px dashed rgba(14, 165, 233, 0.55);
+        transform-origin: center;
+      }
+      #ring-2 {
+        position: absolute;
+        width: 720px;
+        height: 720px;
+        border-radius: 50%;
+        border: 1.5px solid rgba(14, 165, 233, 0.2);
+        transform-origin: center;
+      }
+      #logo-wrap {
+        width: 480px;
+        height: 480px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        z-index: 2;
+      }
+      #logo-wrap svg {
+        width: 100%;
+        height: 100%;
+        filter: drop-shadow(0 12px 36px rgba(14, 165, 233, 0.3));
+      }
+      #glow-disc {
+        position: absolute;
+        width: 520px;
+        height: 520px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(14, 165, 233, 0.22) 0%,
+          rgba(14, 165, 233, 0) 65%
+        );
+        z-index: 1;
+      }
+      #tagline-row {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+      #tagline-mark {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--stroke, #0ea5e9);
+        box-shadow: 0 0 14px rgba(14, 165, 233, 0.55);
+      }
+      #tagline {
+        font-size: 56px;
+        font-weight: 700;
+        color: #18141a;
+        letter-spacing: -0.012em;
+        text-align: center;
+        max-width: 1500px;
+        line-height: 1.15;
+      }
+      #footer-bar {
+        margin-top: 22px;
+        width: 60%;
+        height: 4px;
+        max-width: 900px;
+        background: rgba(14, 165, 233, 0.12);
+        border-radius: 999px;
+        overflow: hidden;
+        position: relative;
+      }
+      #footer-fill {
+        position: absolute;
+        inset: 0 100% 0 0;
+        background: linear-gradient(
+          90deg,
+          var(--stroke, #0ea5e9),
+          rgba(14, 165, 233, 0.4)
+        );
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="logo-reveal"
+      data-start="0"
+      data-duration="10"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div id="stage">
+        <div id="logo-stack">
+          <div id="ring-2"></div>
+          <div id="ring"></div>
+          <div id="glow-disc"></div>
+          <div id="logo-wrap"></div>
+        </div>
+        <div id="tagline-row">
+          <div id="tagline-mark"></div>
+          <div id="tagline"></div>
+        </div>
+        <div id="footer-bar"><div id="footer-fill"></div></div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const vars = window.__hyperframes
+          ? window.__hyperframes.getVariables()
+          : {
+              text: "hello what is going on",
+              logoSvg: "",
+              drawDuration: 1.8,
+              strokeColor: "#0ea5e9",
+              fillColor: "#0ea5e9",
+            };
+
+        const stroke = vars.strokeColor || "#0ea5e9";
+        const fill = vars.fillColor || stroke;
+        document.documentElement.style.setProperty("--stroke", stroke);
+
+        const tagline = document.getElementById("tagline");
+        tagline.textContent = String(vars.text || "");
+
+        const logoWrap = document.getElementById("logo-wrap");
+
+        const fallbackSvg =
+          '<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">' +
+            '<rect x="18" y="18" width="164" height="164" rx="34" ry="34" ' +
+              'fill="' + stroke + '" />' +
+            '<path d="M 56 142 L 78 62 L 98 62 L 120 142 L 106 142 L 100 122 L 76 122 L 70 142 Z M 80 108 L 96 108 L 88 78 Z" ' +
+              'fill="#ffffff" />' +
+            '<path d="M 128 62 L 168 62 L 168 76 L 142 76 L 142 96 L 162 96 L 162 110 L 142 110 L 142 142 L 128 142 Z" ' +
+              'fill="#ffffff" />' +
+          '</svg>';
+
+        const trimmed = (vars.logoSvg || "").trim();
+        const svgMarkup =
+          trimmed.length > 0 && trimmed.indexOf("<svg") !== -1
+            ? trimmed
+            : fallbackSvg;
+        logoWrap.insertAdjacentHTML("beforeend", svgMarkup);
+
+        const total = 10;
+
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+
+        // Outer ring rotates continuously across the full 10s — every sampled
+        // frame catches it at a distinct rotation.
+        const ringRot = total; // 360deg per 10s
+        tl.fromTo(
+          "#ring",
+          { rotate: -8 },
+          { rotate: 360 - 8, duration: ringRot, ease: "none" },
+          0,
+        );
+        tl.fromTo(
+          "#ring-2",
+          { rotate: 8 },
+          { rotate: -360 + 8, duration: ringRot, ease: "none" },
+          0,
+        );
+
+        // Logo entrance: scale-bounce from 0.86 → 1.0 (visible at t=0)
+        // Then a continuous breath cycle for the remainder of the duration.
+        tl.fromTo(
+          "#logo-wrap",
+          { scale: 0.86 },
+          { scale: 1.0, duration: vars.drawDuration, ease: "back.out(1.5)" },
+          0.05,
+        );
+
+        // Glow disc grows + fades subtly across the full duration
+        tl.fromTo(
+          "#glow-disc",
+          { scale: 0.7, opacity: 0.4 },
+          { scale: 1.0, opacity: 0.9, duration: vars.drawDuration, ease: "expo.out" },
+          0.05,
+        );
+        // After entrance, a continuous slow breath
+        const breathCycle = 3.0;
+        const breaths = Math.max(
+          1,
+          Math.ceil((total - vars.drawDuration - 0.5) / breathCycle) - 1,
+        );
+        tl.to(
+          "#glow-disc",
+          {
+            scale: 1.08,
+            opacity: 0.65,
+            duration: breathCycle / 2,
+            ease: "sine.inOut",
+            yoyo: true,
+            repeat: breaths,
+          },
+          vars.drawDuration + 0.3,
+        );
+
+        // Tagline mark pulses (deterministic, finite)
+        const markCycle = 1.6;
+        const markReps = Math.max(1, Math.ceil(total / markCycle) - 1);
+        tl.to(
+          "#tagline-mark",
+          {
+            scale: 1.2,
+            duration: markCycle / 2,
+            ease: "sine.inOut",
+            yoyo: true,
+            repeat: markReps,
+          },
+          0,
+        );
+
+        // Tagline entrance — already visible at t=0 via CSS; subtle settle via y
+        tl.from(
+          "#tagline",
+          { y: 18, duration: 0.7, ease: "power3.out" },
+          0.1,
+        );
+
+        // Footer bar fills linearly across the full duration
+        const footerObj = { v: 0 };
+        const footerEl = document.getElementById("footer-fill");
+        tl.to(
+          footerObj,
+          {
+            v: 1,
+            duration: total - 0.5,
+            ease: "none",
+            onUpdate() {
+              if (footerEl) {
+                footerEl.style.right = (100 - footerObj.v * 100).toFixed(1) + "%";
+              }
+            },
+          },
+          0,
+        );
+
+        window.__timelines["logo-reveal"] = tl;
+      })();
+    </script>
+  </body>
+</html>

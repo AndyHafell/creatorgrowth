@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edit Diagram Image — {{ diagram_name }}</title>
+<style>
+  html, body { margin:0; padding:0; height:100%; background:#0a0a14; color:#ddd; font-family:-apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; overflow:hidden; }
+  .toolbar { display:flex; align-items:center; gap:14px; padding:10px 16px; background:#0d0d1a; border-bottom:1px solid #1f1f30; }
+  .toolbar .title { font-weight:700; letter-spacing:2px; color:#f5b942; font-size:12px; }
+  .toolbar .meta { color:#888; font-size:12px; border-left:1px solid #2a2a4a; padding-left:14px; }
+  .toolbar .status { color:#555; font-size:11px; margin-left:auto; }
+  .toolbar button { background:#0d0d1a; border:1px solid #2a2a4a; color:#ddd; padding:7px 16px; border-radius:6px; font-size:11px; letter-spacing:1px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .toolbar button.primary { background:#f5b942; color:#000; border-color:#f5b942; }
+  .toolbar button:disabled { opacity:0.4; cursor:not-allowed; }
+  .frame-wrap { position:absolute; inset:46px 0 0 0; }
+  iframe { width:100%; height:100%; border:0; display:block; }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <div class="title">DIAGRAM IMAGE EDITOR</div>
+    <div class="meta">{{ diagram_name }} &middot; {{ video_title }}</div>
+    <span id="status" class="status">Loading miniPaint…</span>
+    <button id="saveBtn" class="primary" onclick="saveBack()" disabled>SAVE BACK TO STUDIO</button>
+    <button onclick="goBackToCard()">CLOSE</button>
+  </div>
+  <div class="frame-wrap">
+    <iframe id="mp" src="/static/minipaint/index.html" allow="camera"></iframe>
+  </div>
+
+<script>
+const DIAGRAM_ID = {{ diagram_id|tojson }};
+const VIDEO_ID = {{ video_id|tojson }};
+const IMAGE_URL = {{ image_url|tojson }};
+
+function goBackToCard() {
+  try {
+    if (window.opener && !window.opener.closed) {
+      window.close();
+      setTimeout(function(){ window.location.href = '/?card=' + VIDEO_ID + '&studio=diagrams'; }, 100);
+      return;
+    }
+  } catch (e) {}
+  window.location.href = '/?card=' + VIDEO_ID + '&studio=diagrams';
+}
+
+function setStatus(msg, color) {
+  const el = document.getElementById('status');
+  el.textContent = msg || '';
+  el.style.color = color || '#555';
+}
+
+const frame = document.getElementById('mp');
+frame.addEventListener('load', function() {
+  const start = Date.now();
+  (function waitForLayers() {
+    const W = frame.contentWindow;
+    if (W && W.Layers && typeof W.Layers.insert === 'function') {
+      loadImageAsLayer();
+      return;
+    }
+    if (Date.now() - start > 15000) {
+      setStatus('miniPaint failed to load (timeout)', '#e07070');
+      return;
+    }
+    setTimeout(waitForLayers, 100);
+  })();
+});
+
+function loadImageAsLayer() {
+  if (!IMAGE_URL) {
+    setStatus('Ready (no source image — start from blank)', '#4caf50');
+    document.getElementById('saveBtn').disabled = false;
+    return;
+  }
+  setStatus('Loading diagram image…', '#f5b942');
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = function() {
+    const W = frame.contentWindow;
+    try {
+      W.Layers.insert({
+        name: 'diagram_source',
+        type: 'image',
+        data: img,
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+        width_original: img.naturalWidth,
+        height_original: img.naturalHeight,
+      });
+      setStatus('Loaded ' + img.naturalWidth + '×' + img.naturalHeight, '#4caf50');
+      document.getElementById('saveBtn').disabled = false;
+    } catch (e) {
+      setStatus('Layers.insert failed: ' + e.message, '#e07070');
+    }
+  };
+  img.onerror = function() {
+    setStatus('Could not load image at ' + IMAGE_URL, '#e07070');
+  };
+  img.src = IMAGE_URL;
+}
+
+function saveBack() {
+  const W = frame.contentWindow;
+  if (!W || !W.Layers) { setStatus('miniPaint not ready', '#e07070'); return; }
+  setStatus('Exporting canvas…', '#f5b942');
+  document.getElementById('saveBtn').disabled = true;
+  try {
+    const dim = W.Layers.get_dimensions();
+    const tmp = document.createElement('canvas');
+    tmp.width = dim.width;
+    tmp.height = dim.height;
+    W.Layers.convert_layers_to_canvas(tmp.getContext('2d'));
+    tmp.toBlob(function(blob) {
+      if (!blob) { setStatus('Export failed', '#e07070'); document.getElementById('saveBtn').disabled = false; return; }
+      setStatus('Uploading ' + Math.round(blob.size / 1024) + 'KB…', '#f5b942');
+      const fd = new FormData();
+      fd.append('image', blob, 'diagram_' + DIAGRAM_ID + '.png');
+      fetch('/api/diagrams/' + encodeURIComponent(DIAGRAM_ID) + '/image', { method: 'POST', body: fd })
+        .then(function(r) { return r.json().then(function(j) { return {ok: r.ok, body: j}; }); })
+        .then(function(res) {
+          if (!res.ok) throw new Error(res.body.error || 'upload failed');
+          const j = res.body;
+          setStatus('Saved → ' + j.image_path_url, '#4caf50');
+          document.getElementById('saveBtn').disabled = false;
+          if (window.opener && !window.opener.closed) {
+            try {
+              window.opener.postMessage({
+                type: 'diagram-image-updated',
+                diagram_id: DIAGRAM_ID,
+                video_id: VIDEO_ID,
+                image_path_url: j.image_path_url,
+                bg_color_auto: j.bg_color_auto || null,
+              }, '*');
+            } catch (e) {}
+          }
+        })
+        .catch(function(err) {
+          setStatus('Save failed: ' + err.message, '#e07070');
+          document.getElementById('saveBtn').disabled = false;
+        });
+    }, 'image/png');
+  } catch (e) {
+    setStatus('Export error: ' + e.message, '#e07070');
+    document.getElementById('saveBtn').disabled = false;
+  }
+}
+</script>
+</body>
+</html>

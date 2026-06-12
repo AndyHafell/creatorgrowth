@@ -1,0 +1,184 @@
+<!doctype html>
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"text","type":"string","label":"Title","default":"hello what is going on"},
+    {"id":"logos","type":"string","label":"Logo glyphs (comma-separated 1-2 chars each, 2-6 entries)","default":"A,B,C,D,E,F"},
+    {"id":"stagger","type":"number","label":"Tile stagger (s)","default":0.12},
+    {"id":"entryDuration","type":"number","label":"Entry duration (s)","default":0.65},
+    {"id":"accentColor","type":"color","label":"Accent color","default":"#22c55e"}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 50% 70%, rgba(34, 197, 94, 0.08) 0%, transparent 60%),
+          #0f172a;
+        font-family: "Inter", sans-serif;
+      }
+      #stage {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 80px;
+        gap: 56px;
+      }
+      #title {
+        font-weight: 800;
+        font-size: 92px;
+        color: #f8fafc;
+        letter-spacing: -0.01em;
+        text-align: center;
+        line-height: 1.06;
+        max-width: 1700px;
+      }
+      #grid {
+        display: grid;
+        gap: 40px;
+        justify-content: center;
+      }
+      .tile {
+        width: 260px;
+        height: 260px;
+        border-radius: 36px;
+        background: rgba(248, 250, 252, 0.04);
+        border: 2px solid rgba(248, 250, 252, 0.1);
+        backdrop-filter: blur(8px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-weight: 800;
+        font-size: 130px;
+        color: #f8fafc;
+        letter-spacing: -0.02em;
+        will-change: transform, opacity;
+        box-shadow:
+          0 18px 40px rgba(0, 0, 0, 0.3),
+          inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        position: relative;
+      }
+      .tile.accent {
+        color: var(--accent, #22c55e);
+        border-color: rgba(34, 197, 94, 0.45);
+        box-shadow:
+          0 22px 50px rgba(34, 197, 94, 0.25),
+          inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="multi-logo-grid"
+      data-start="0"
+      data-duration="10"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div id="stage">
+        <h1 id="title"></h1>
+        <div id="grid"></div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const vars = window.__hyperframes
+          ? window.__hyperframes.getVariables()
+          : {
+              text: "hello what is going on",
+              logos: "A,B,C,D,E,F",
+              stagger: 0.12,
+              entryDuration: 0.65,
+              accentColor: "#22c55e",
+            };
+
+        const accent = vars.accentColor || "#22c55e";
+        document.documentElement.style.setProperty("--accent", accent);
+
+        document.getElementById("title").textContent = String(vars.text || "");
+
+        const tokens = String(vars.logos || "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .slice(0, 6);
+        const logos = tokens.length >= 2 ? tokens : ["A", "B", "C", "D", "E", "F"];
+
+        const grid = document.getElementById("grid");
+        const cols = logos.length <= 3 ? logos.length : 3;
+        grid.style.gridTemplateColumns = "repeat(" + cols + ", 260px)";
+
+        // Accent index = middle tile, deterministic
+        const accentIdx = Math.floor(logos.length / 2);
+
+        const tileEls = logos.map((g, i) => {
+          const el = document.createElement("div");
+          el.className = "tile" + (i === accentIdx ? " accent" : "");
+          el.textContent = g;
+          grid.appendChild(el);
+          return el;
+        });
+
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+
+        // Title slides up
+        tl.from(
+          "#title",
+          { y: 36, opacity: 0, duration: 0.7, ease: "power3.out" },
+          0.05,
+        );
+
+        // Tiles: scale-bounce in with stagger.
+        // Tiles start at scale 0.92 (still visible at t=0) and pop to 1.0.
+        // Each tile also fades from 0.55 → 1 so motion reads.
+        tl.from(
+          tileEls,
+          {
+            scale: 0.92,
+            opacity: 0.55,
+            duration: vars.entryDuration,
+            ease: "back.out(1.6)",
+            stagger: vars.stagger,
+          },
+          0.1,
+        );
+
+        // Subtle accent tile pulse — finite repeats
+        const pulseCycle = 1.8;
+        const pulses = Math.max(1, Math.ceil((10 - 2.5) / pulseCycle) - 1);
+        tl.to(
+          tileEls[accentIdx],
+          {
+            scale: 1.04,
+            duration: pulseCycle / 2,
+            ease: "sine.inOut",
+            yoyo: true,
+            repeat: pulses,
+          },
+          2.5,
+        );
+
+        window.__timelines["multi-logo-grid"] = tl;
+      })();
+    </script>
+  </body>
+</html>

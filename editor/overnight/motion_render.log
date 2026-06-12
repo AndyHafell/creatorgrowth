@@ -1,0 +1,504 @@
+[2026-05-26T17:06:32.316Z] === pipeline_iter_start ===
+  jobId: smoke-mpmw0fll
+  preset: typewriter-dark
+  iteration: 1
+  params: {"text":"hello what is going on","fontSize":140,"typeDuration":2.2,"caretColor":"#39d98a"}
+[2026-05-26T17:06:38.809Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: smoke-mpmw0fll
+  iteration: 1
+  quality: draft
+  elapsedSec: 5.9
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-mpmw0fll_iter1_typewriter-dark_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:06:48.678Z] === judge_ok ===
+  mp4: smoke-mpmw0fll_iter1_typewriter-dark_draft.mp4
+  elapsedMs: 9778
+  promptTokens: 1484
+  candidatesTokens: 102
+  spendUsd: 0.000700
+  cumulativeSpendUsd: 0.000700
+  scores: {"readable":10,"professional":9,"timing":2,"smoothness":3}
+  minScore: 2
+  passes: false
+  issues: ["Animation completes too quickly, leaving the majority of the video static.","No further animation or progression after t=2.5s.","Cursor disappears between t=2.5s and t=5s without a clear animation or fade."]
+[2026-05-26T17:06:48.680Z] === pipeline_iter_start ===
+  jobId: smoke-mpmw0fll
+  preset: typewriter-dark
+  iteration: 2
+  params: {"text":"hello what is going on","fontSize":140,"typeDuration":2.2,"caretColor":"#39d98a"}
+[2026-05-26T17:06:54.498Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: smoke-mpmw0fll
+  iteration: 2
+  quality: draft
+  elapsedSec: 5.5
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-mpmw0fll_iter2_typewriter-dark_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:06:54.498Z] judge: cache hit cf8b86bb9dac (mp4=smoke-mpmw0fll_iter2_typewriter-dark_draft.mp4)
+[2026-05-26T17:06:54.499Z] === pipeline_iter_start ===
+  jobId: smoke-mpmw0fll
+  preset: typewriter-dark
+  iteration: 3
+  params: {"text":"hello what is going on","fontSize":140,"typeDuration":2.2,"caretColor":"#39d98a"}
+[2026-05-26T17:07:00.178Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: smoke-mpmw0fll
+  iteration: 3
+  quality: draft
+  elapsedSec: 5.3
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-mpmw0fll_iter3_typewriter-dark_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:07:00.178Z] judge: cache hit cf8b86bb9dac (mp4=smoke-mpmw0fll_iter3_typewriter-dark_draft.mp4)
+[2026-05-26T17:08:36.395Z] === pipeline_iter_start ===
+  jobId: smoke-mpmw33ca
+  preset: typewriter-dark
+  iteration: 1
+  params: {"text":"hello what is going on","fontSize":140,"typeDuration":2.2,"caretColor":"#39d98a"}
+[2026-05-26T17:08:43.776Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: smoke-mpmw33ca
+  iteration: 1
+  quality: draft
+  elapsedSec: 6.8
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-mpmw33ca_iter1_typewriter-dark_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:08:55.672Z] === judge_ok ===
+  mp4: smoke-mpmw33ca_iter1_typewriter-dark_draft.mp4
+  elapsedMs: 11800
+  promptTokens: 1484
+  candidatesTokens: 104
+  spendUsd: 0.000705
+  cumulativeSpendUsd: 0.000705
+  scores: {"readable":10,"professional":9,"timing":2,"smoothness":3}
+  minScore: 2
+  passes: false
+  issues: ["Animation stops progressing after t=2.5s","Video is static for 7.5 seconds (from t=2.5s to t=10s)","No new text or cursor movement after t=2.5s"]
+[2026-05-26T17:08:55.674Z] === pipeline_iter_start ===
+  jobId: smoke-mpmw33ca
+  preset: typewriter-dark
+  iteration: 2
+  params: {"text":"hello what is going on","fontSize":140,"typeDuration":3.08,"caretColor":"#39d98a"}
+[2026-05-26T17:09:02.357Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: smoke-mpmw33ca
+  iteration: 2
+  quality: draft
+  elapsedSec: 6.3
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-mpmw33ca_iter2_typewriter-dark_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:09:10.914Z] === judge_ok ===
+  mp4: smoke-mpmw33ca_iter2_typewriter-dark_draft.mp4
+  elapsedMs: 8472
+  promptTokens: 1484
+  candidatesTokens: 91
+  spendUsd: 0.000673
+  cumulativeSpendUsd: 0.001378
+  scores: {"readable":10,"professional":7,"timing":4,"smoothness":8}
+  minScore: 4
+  passes: false
+  issues: ["Word 'going' is cut off as 'goin' at t=2.5s, indicating a layout issue.","Animation stops progressing after t=5s, making the video feel incomplete."]
+[2026-05-26T17:09:10.915Z] === pipeline_iter_start ===
+  jobId: smoke-mpmw33ca
+  preset: typewriter-dark
+  iteration: 3
+  params: {"text":"hello what is going on","fontSize":126,"typeDuration":3.08,"caretColor":"#39d98a"}
+[2026-05-26T17:09:17.657Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: smoke-mpmw33ca
+  iteration: 3
+  quality: draft
+  elapsedSec: 6.4
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-mpmw33ca_iter3_typewriter-dark_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:09:28.332Z] === judge_ok ===
+  mp4: smoke-mpmw33ca_iter3_typewriter-dark_draft.mp4
+  elapsedMs: 10588
+  promptTokens: 1484
+  candidatesTokens: 96
+  spendUsd: 0.000685
+  cumulativeSpendUsd: 0.002063
+  scores: {"readable":10,"professional":9,"timing":5,"smoothness":8}
+  minScore: 5
+  passes: false
+  issues: ["Animation progression ceases after t=5s, resulting in 5 seconds of static content.","The cursor's abrupt repositioning from end to start at t=5s lacks clear narrative purpose for the subsequent static period."]
+[2026-05-26T17:09:34.046Z] === pipeline_iter_start ===
+  jobId: smoke-mpmw4btp
+  preset: typewriter-dark
+  iteration: 1
+  params: {"text":"hello what is going on","fontSize":140,"typeDuration":2.2,"caretColor":"#39d98a"}
+[2026-05-26T17:09:40.767Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: smoke-mpmw4btp
+  iteration: 1
+  quality: draft
+  elapsedSec: 6.4
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-mpmw4btp_iter1_typewriter-dark_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:09:40.768Z] judge: cache hit c9a02a4dc3ab (mp4=smoke-mpmw4btp_iter1_typewriter-dark_draft.mp4)
+[2026-05-26T17:09:40.769Z] === pipeline_iter_start ===
+  jobId: smoke-mpmw4btp
+  preset: typewriter-dark
+  iteration: 2
+  params: {"text":"hello what is going on","fontSize":140,"typeDuration":3.08,"caretColor":"#39d98a"}
+[2026-05-26T17:09:47.424Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: smoke-mpmw4btp
+  iteration: 2
+  quality: draft
+  elapsedSec: 6.3
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-mpmw4btp_iter2_typewriter-dark_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:09:47.425Z] judge: cache hit 1a7c20804591 (mp4=smoke-mpmw4btp_iter2_typewriter-dark_draft.mp4)
+[2026-05-26T17:09:47.425Z] === pipeline_iter_start ===
+  jobId: smoke-mpmw4btp
+  preset: typewriter-dark
+  iteration: 3
+  params: {"text":"hello what is going on","fontSize":126,"typeDuration":3.08,"caretColor":"#39d98a"}
+[2026-05-26T17:09:54.133Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: smoke-mpmw4btp
+  iteration: 3
+  quality: draft
+  elapsedSec: 6.4
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-mpmw4btp_iter3_typewriter-dark_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:09:54.134Z] judge: cache hit f0f7e9597734 (mp4=smoke-mpmw4btp_iter3_typewriter-dark_draft.mp4)
+[2026-05-26T17:11:24.285Z] === pipeline_iter_start ===
+  jobId: smoke-mpmw6ovv
+  preset: typewriter-dark
+  iteration: 1
+  params: {"text":"hello what is going on","fontSize":140,"typeDuration":2.6,"caretColor":"#39d98a"}
+[2026-05-26T17:11:31.847Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: smoke-mpmw6ovv
+  iteration: 1
+  quality: draft
+  elapsedSec: 7.2
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-mpmw6ovv_iter1_typewriter-dark_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:11:43.332Z] === judge_ok ===
+  mp4: smoke-mpmw6ovv_iter1_typewriter-dark_draft.mp4
+  elapsedMs: 11392
+  promptTokens: 1484
+  candidatesTokens: 140
+  spendUsd: 0.000795
+  cumulativeSpendUsd: 0.000795
+  scores: {"readable":10,"professional":9,"timing":4,"smoothness":5}
+  minScore: 4
+  passes: false
+  issues: ["Typing animation completes by t=5s, but the video continues for another 5 seconds with no further text appearing.","Progress bar animation is inconsistent: no progress from t=0s to t=2.5s, then a large jump from 22% to 81% between t=5s and t=7.5s.","The green cursor remains visible after the typing animation has finished."]
+[2026-05-26T17:11:43.334Z] === pipeline_iter_start ===
+  jobId: smoke-mpmw6ovv
+  preset: typewriter-dark
+  iteration: 2
+  params: {"text":"hello what is going on","fontSize":140,"typeDuration":3.3800000000000003,"caretColor":"#39d98a"}
+[2026-05-26T17:11:50.185Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: smoke-mpmw6ovv
+  iteration: 2
+  quality: draft
+  elapsedSec: 6.5
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-mpmw6ovv_iter2_typewriter-dark_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:12:00.653Z] === judge_ok ===
+  mp4: smoke-mpmw6ovv_iter2_typewriter-dark_draft.mp4
+  elapsedMs: 10369
+  promptTokens: 1484
+  candidatesTokens: 104
+  spendUsd: 0.000705
+  cumulativeSpendUsd: 0.001500
+  scores: {"readable":10,"professional":9,"timing":4,"smoothness":8}
+  minScore: 4
+  passes: false
+  issues: ["Progress bar remains at 0% for the first 2.5 seconds.","Progress bar progression is highly uneven, with a slow start and rapid acceleration towards the end.","Progress bar completion does not align with the completion of the text typing animation."]
+[2026-05-26T17:12:00.654Z] === pipeline_iter_start ===
+  jobId: smoke-mpmw6ovv
+  preset: typewriter-dark
+  iteration: 3
+  params: {"text":"hello what is going on","fontSize":140,"typeDuration":2.535,"caretColor":"#39d98a"}
+[2026-05-26T17:12:07.374Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: smoke-mpmw6ovv
+  iteration: 3
+  quality: draft
+  elapsedSec: 6.4
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-mpmw6ovv_iter3_typewriter-dark_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:12:20.317Z] === judge_ok ===
+  mp4: smoke-mpmw6ovv_iter3_typewriter-dark_draft.mp4
+  elapsedMs: 12855
+  promptTokens: 1484
+  candidatesTokens: 110
+  spendUsd: 0.000720
+  cumulativeSpendUsd: 0.002221
+  scores: {"readable":10,"professional":9,"timing":6,"smoothness":8}
+  minScore: 6
+  passes: false
+  issues: ["Rendering progress bar remains at 0% for 2.5 seconds while text is still being typed.","Progress bar fills with highly non-linear progression, with a significant jump from 22% to 82% between t=5s and t=7.5s."]
+[2026-05-26T17:12:48.581Z] === pipeline_iter_start ===
+  jobId: smoke-mpmw8hxh
+  preset: typewriter-dark
+  iteration: 1
+  params: {"text":"hello what is going on","fontSize":140,"typeDuration":2.6,"caretColor":"#39d98a"}
+[2026-05-26T17:12:55.457Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: smoke-mpmw8hxh
+  iteration: 1
+  quality: draft
+  elapsedSec: 6.5
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-mpmw8hxh_iter1_typewriter-dark_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:13:04.363Z] === judge_ok ===
+  mp4: smoke-mpmw8hxh_iter1_typewriter-dark_draft.mp4
+  elapsedMs: 8820
+  promptTokens: 1484
+  candidatesTokens: 100
+  spendUsd: 0.000695
+  cumulativeSpendUsd: 0.000695
+  scores: {"readable":10,"professional":9,"timing":5,"smoothness":8}
+  minScore: 5
+  passes: false
+  issues: ["Text animation completes at t=5s, but the progress bar continues to 100% at t=10s.","Typing cursor remains active from t=5s to t=10s without new text appearing."]
+[2026-05-26T17:13:04.366Z] === pipeline_iter_start ===
+  jobId: smoke-mpmw8hxh
+  preset: typewriter-dark
+  iteration: 2
+  params: {"text":"hello what is going on","fontSize":140,"typeDuration":3.3800000000000003,"caretColor":"#39d98a"}
+[2026-05-26T17:13:10.979Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: smoke-mpmw8hxh
+  iteration: 2
+  quality: draft
+  elapsedSec: 6.3
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-mpmw8hxh_iter2_typewriter-dark_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:13:21.326Z] === judge_ok ===
+  mp4: smoke-mpmw8hxh_iter2_typewriter-dark_draft.mp4
+  elapsedMs: 10256
+  promptTokens: 1484
+  candidatesTokens: 100
+  spendUsd: 0.000695
+  cumulativeSpendUsd: 0.001390
+  scores: {"readable":10,"professional":9,"timing":5,"smoothness":8}
+  minScore: 5
+  passes: false
+  issues: ["Main text animation (typing effect) stops at t=5s, but the video continues for another 5 seconds.","No new text appears between t=5s and t=10s, creating a lull in the primary animation."]
+[2026-05-26T17:13:21.326Z] === pipeline_iter_start ===
+  jobId: smoke-mpmw8hxh
+  preset: typewriter-dark
+  iteration: 3
+  params: {"text":"hello what is going on","fontSize":140,"typeDuration":4.394000000000001,"caretColor":"#39d98a"}
+[2026-05-26T17:13:28.132Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: smoke-mpmw8hxh
+  iteration: 3
+  quality: draft
+  elapsedSec: 6.5
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-mpmw8hxh_iter3_typewriter-dark_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:13:37.376Z] === judge_ok ===
+  mp4: smoke-mpmw8hxh_iter3_typewriter-dark_draft.mp4
+  elapsedMs: 9154
+  promptTokens: 1484
+  candidatesTokens: 104
+  spendUsd: 0.000705
+  cumulativeSpendUsd: 0.002096
+  scores: {"readable":10,"professional":9,"timing":6,"smoothness":8}
+  minScore: 6
+  passes: false
+  issues: ["Typing animation completes by t=5s, making the latter half of the video (t=5s to t=10s) less dynamic.","Consider extending the typing animation or introducing new visual elements/text in the second half to maintain engagement."]
+[2026-05-26T17:14:55.355Z] === pipeline_iter_start ===
+  jobId: smoke-mpmwb7qx
+  preset: typewriter-dark
+  iteration: 1
+  params: {"text":"hello what is going on","fontSize":140,"typeDuration":2.6,"caretColor":"#39d98a"}
+[2026-05-26T17:15:02.549Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: smoke-mpmwb7qx
+  iteration: 1
+  quality: draft
+  elapsedSec: 6.9
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-mpmwb7qx_iter1_typewriter-dark_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:15:09.635Z] === judge_ok ===
+  mp4: smoke-mpmwb7qx_iter1_typewriter-dark_draft.mp4
+  elapsedMs: 6991
+  promptTokens: 1484
+  candidatesTokens: 79
+  spendUsd: 0.000643
+  cumulativeSpendUsd: 0.000643
+  scores: {"readable":10,"professional":9,"timing":7,"smoothness":9}
+  minScore: 7
+  passes: true
+  issues: ["Text animation completes by t=7.5s, leaving the last 2.5s with no new text content while the progress bar finishes."]
+[2026-05-26T17:15:09.638Z] pipeline: passing render found at iter 1; rendering final high-quality
+[2026-05-26T17:15:17.446Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: smoke-mpmwb7qx
+  iteration: 4
+  quality: high
+  elapsedSec: 7.4
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-mpmwb7qx_iter4_typewriter-dark_high.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:15:37.389Z] === pipeline_iter_start ===
+  jobId: smoke-logo-mpmwc46l
+  preset: logo-reveal
+  iteration: 1
+  params: {"text":"hello what's going on","drawDuration":2,"strokeColor":"#0ea5e9","fillColor":"#0ea5e9","logoSvg":"<svg viewBox=\"0 0 200 200\" xmlns=\"http://www.w3.org/2000/svg\">\n  <circle cx=\"100\" cy=\"100\" r=\"78\" fill=\"#0ea5e9\" stroke=\"#0ea5e9\" stroke-width=\"4\"/>\n  <path d=\"M 60 130 L 100 60 L 140 130 L 115 130 L 100 105 L 85 130 Z\" fill=\"#ffffff\" stroke=\"#ffffff\" stroke-width=\"2\" stroke-linejoin=\"round\"/>\n  <path d=\"M 90 130 L 110 130 L 110 150 L 90 150 Z\" fill=\"#ffffff\" stroke=\"#ffffff\" stroke-width=\"2\"/>\n</svg>\n"}
+[2026-05-26T17:15:44.197Z] === render_ok ===
+  preset: logo-reveal
+  jobId: smoke-logo-mpmwc46l
+  iteration: 1
+  quality: draft
+  elapsedSec: 6.5
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-logo-mpmwc46l_iter1_logo-reveal_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:15:54.943Z] === judge_ok ===
+  mp4: smoke-logo-mpmwc46l_iter1_logo-reveal_draft.mp4
+  elapsedMs: 10604
+  promptTokens: 1484
+  candidatesTokens: 85
+  spendUsd: 0.000658
+  cumulativeSpendUsd: 0.000658
+  scores: {"readable":7,"professional":9,"timing":4,"smoothness":7}
+  minScore: 4
+  passes: false
+  issues: ["Logo barely visible at t=0s","Animation stops by t=2.5s and remains static for the rest of the sampled duration (7.5s)"]
+[2026-05-26T17:15:54.950Z] === pipeline_iter_start ===
+  jobId: smoke-logo-mpmwc46l
+  preset: logo-reveal
+  iteration: 2
+  params: {"text":"hello what's going on","drawDuration":2.0999999999999996,"strokeColor":"#0ea5e9","fillColor":"#0ea5e9","logoSvg":"<svg viewBox=\"0 0 200 200\" xmlns=\"http://www.w3.org/2000/svg\">\n  <circle cx=\"100\" cy=\"100\" r=\"78\" fill=\"#0ea5e9\" stroke=\"#0ea5e9\" stroke-width=\"4\"/>\n  <path d=\"M 60 130 L 100 60 L 140 130 L 115 130 L 100 105 L 85 130 Z\" fill=\"#ffffff\" stroke=\"#ffffff\" stroke-width=\"2\" stroke-linejoin=\"round\"/>\n  <path d=\"M 90 130 L 110 130 L 110 150 L 90 150 Z\" fill=\"#ffffff\" stroke=\"#ffffff\" stroke-width=\"2\"/>\n</svg>\n"}
+[2026-05-26T17:16:01.658Z] === render_ok ===
+  preset: logo-reveal
+  jobId: smoke-logo-mpmwc46l
+  iteration: 2
+  quality: draft
+  elapsedSec: 6.3
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-logo-mpmwc46l_iter2_logo-reveal_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:16:18.601Z] === judge_ok ===
+  mp4: smoke-logo-mpmwc46l_iter2_logo-reveal_draft.mp4
+  elapsedMs: 16810
+  promptTokens: 1484
+  candidatesTokens: 92
+  spendUsd: 0.000675
+  cumulativeSpendUsd: 0.001333
+  scores: {"readable":6,"professional":9,"timing":2,"smoothness":8}
+  minScore: 2
+  passes: false
+  issues: ["Logo not fully formed at t=0s","Text not visible at t=0s","Animation completes by 2.5s, leaving 7.5s of static content"]
+[2026-05-26T17:16:18.602Z] === pipeline_iter_start ===
+  jobId: smoke-logo-mpmwc46l
+  preset: logo-reveal
+  iteration: 3
+  params: {"text":"hello what's going on","drawDuration":2.9399999999999995,"strokeColor":"#0ea5e9","fillColor":"#0ea5e9","logoSvg":"<svg viewBox=\"0 0 200 200\" xmlns=\"http://www.w3.org/2000/svg\">\n  <circle cx=\"100\" cy=\"100\" r=\"78\" fill=\"#0ea5e9\" stroke=\"#0ea5e9\" stroke-width=\"4\"/>\n  <path d=\"M 60 130 L 100 60 L 140 130 L 115 130 L 100 105 L 85 130 Z\" fill=\"#ffffff\" stroke=\"#ffffff\" stroke-width=\"2\" stroke-linejoin=\"round\"/>\n  <path d=\"M 90 130 L 110 130 L 110 150 L 90 150 Z\" fill=\"#ffffff\" stroke=\"#ffffff\" stroke-width=\"2\"/>\n</svg>\n"}
+[2026-05-26T17:16:25.489Z] === render_ok ===
+  preset: logo-reveal
+  jobId: smoke-logo-mpmwc46l
+  iteration: 3
+  quality: draft
+  elapsedSec: 6.5
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-logo-mpmwc46l_iter3_logo-reveal_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:16:38.704Z] === judge_ok ===
+  mp4: smoke-logo-mpmwc46l_iter3_logo-reveal_draft.mp4
+  elapsedMs: 13085
+  promptTokens: 1484
+  candidatesTokens: 151
+  spendUsd: 0.000823
+  cumulativeSpendUsd: 0.002156
+  scores: {"readable":4,"professional":8,"timing":3,"smoothness":5}
+  minScore: 3
+  passes: false
+  issues: ["Logo is barely visible at t=0s and t=2.5s.","Text 'hello what's going on' is not present until t=5s.","Animation of the logo and text completes by t=5s.","No further animation or changes occur between t=5s and t=10s, making the video feel stuck.","The text appears abruptly at t=5s (assuming no fade/slide animation from frames)."]
+[2026-05-26T17:17:45.733Z] === pipeline_iter_start ===
+  jobId: smoke-logo-mpmwev7n
+  preset: logo-reveal
+  iteration: 1
+  params: {"text":"hello what's going on","drawDuration":1.8,"strokeColor":"#0ea5e9","fillColor":"#0ea5e9","logoSvg":"<svg viewBox=\"0 0 200 200\" xmlns=\"http://www.w3.org/2000/svg\">\n  <circle cx=\"100\" cy=\"100\" r=\"78\" fill=\"#0ea5e9\" stroke=\"#0ea5e9\" stroke-width=\"4\"/>\n  <path d=\"M 60 130 L 100 60 L 140 130 L 115 130 L 100 105 L 85 130 Z\" fill=\"#ffffff\" stroke=\"#ffffff\" stroke-width=\"2\" stroke-linejoin=\"round\"/>\n  <path d=\"M 90 130 L 110 130 L 110 150 L 90 150 Z\" fill=\"#ffffff\" stroke=\"#ffffff\" stroke-width=\"2\"/>\n</svg>\n"}
+[2026-05-26T17:17:53.736Z] === render_ok ===
+  preset: logo-reveal
+  jobId: smoke-logo-mpmwev7n
+  iteration: 1
+  quality: draft
+  elapsedSec: 7.6
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-logo-mpmwev7n_iter1_logo-reveal_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:18:01.724Z] === judge_ok ===
+  mp4: smoke-logo-mpmwev7n_iter1_logo-reveal_draft.mp4
+  elapsedMs: 7840
+  promptTokens: 1484
+  candidatesTokens: 90
+  spendUsd: 0.000670
+  cumulativeSpendUsd: 0.000670
+  scores: {"readable":10,"professional":9,"timing":7,"smoothness":9}
+  minScore: 7
+  passes: true
+  issues: ["Animation is extremely minimal for a 10-second duration, primarily just a line drawing.","The blue line below the text does not fully complete its animation by t=10s."]
+[2026-05-26T17:18:01.725Z] pipeline: passing render found at iter 1; rendering final high-quality
+[2026-05-26T17:18:10.240Z] === render_ok ===
+  preset: logo-reveal
+  jobId: smoke-logo-mpmwev7n
+  iteration: 4
+  quality: high
+  elapsedSec: 7.9
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/smoke-logo-mpmwev7n_iter4_logo-reveal_high.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:18:43.259Z] === pipeline_iter_start ===
+  jobId: e2e-typewriter-mpmwg3lm
+  preset: typewriter-dark
+  iteration: 1
+  params: {"text":"hello what's going on","fontSize":140,"typeDuration":2.6,"caretColor":"#39d98a"}
+[2026-05-26T17:18:50.700Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: e2e-typewriter-mpmwg3lm
+  iteration: 1
+  quality: draft
+  elapsedSec: 6.9
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/e2e-typewriter-mpmwg3lm_iter1_typewriter-dark_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:19:02.968Z] === judge_ok ===
+  mp4: e2e-typewriter-mpmwg3lm_iter1_typewriter-dark_draft.mp4
+  elapsedMs: 12175
+  promptTokens: 1484
+  candidatesTokens: 128
+  spendUsd: 0.000765
+  cumulativeSpendUsd: 0.000765
+  scores: {"readable":10,"professional":9,"timing":7,"smoothness":8}
+  minScore: 7
+  passes: true
+  issues: ["Text 'hello' is already present at t=0, not typed out.","Typing speed of main text varies across segments.","Second line appears instantly at t=5s, not typed character by character.","Final 2.5 seconds (t=7.5 to t=10) lack new text animation, only progress bar finishes."]
+[2026-05-26T17:19:02.969Z] pipeline: passing render found at iter 1; rendering final high-quality
+[2026-05-26T17:19:11.043Z] === render_ok ===
+  preset: typewriter-dark
+  jobId: e2e-typewriter-mpmwg3lm
+  iteration: 4
+  quality: high
+  elapsedSec: 7.7
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/e2e-typewriter-mpmwg3lm_iter4_typewriter-dark_high.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:19:11.048Z] === pipeline_iter_start ===
+  jobId: e2e-logo-reveal-mpmwgp1k
+  preset: logo-reveal
+  iteration: 1
+  params: {"text":"hello what's going on","drawDuration":1.8,"strokeColor":"#0ea5e9","fillColor":"#0ea5e9","logoSvg":"<svg viewBox=\"0 0 200 200\" xmlns=\"http://www.w3.org/2000/svg\">\n  <circle cx=\"100\" cy=\"100\" r=\"78\" fill=\"#0ea5e9\" stroke=\"#0ea5e9\" stroke-width=\"4\"/>\n  <path d=\"M 60 130 L 100 60 L 140 130 L 115 130 L 100 105 L 85 130 Z\" fill=\"#ffffff\" stroke=\"#ffffff\" stroke-width=\"2\" stroke-linejoin=\"round\"/>\n  <path d=\"M 90 130 L 110 130 L 110 150 L 90 150 Z\" fill=\"#ffffff\" stroke=\"#ffffff\" stroke-width=\"2\"/>\n</svg>\n"}
+[2026-05-26T17:19:17.801Z] === render_ok ===
+  preset: logo-reveal
+  jobId: e2e-logo-reveal-mpmwgp1k
+  iteration: 1
+  quality: draft
+  elapsedSec: 6.4
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/e2e-logo-reveal-mpmwgp1k_iter1_logo-reveal_draft.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}
+[2026-05-26T17:19:17.803Z] judge: cache hit 3cd3e03b554b (mp4=e2e-logo-reveal-mpmwgp1k_iter1_logo-reveal_draft.mp4)
+[2026-05-26T17:19:17.803Z] pipeline: passing render found at iter 1; rendering final high-quality
+[2026-05-26T17:19:25.959Z] === render_ok ===
+  preset: logo-reveal
+  jobId: e2e-logo-reveal-mpmwgp1k
+  iteration: 4
+  quality: high
+  elapsedSec: 7.8
+  mp4Path: /Users/andershafell/dev/creatorgrowth-editor/renders/e2e-logo-reveal-mpmwgp1k_iter4_logo-reveal_high.mp4
+  probe: {"codec":"h264","width":1920,"height":1080,"fps":30,"duration":10}

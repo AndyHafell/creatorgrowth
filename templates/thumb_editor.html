@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edit Thumb — slot {{ slot_label }}</title>
+<style>
+  html, body { margin:0; padding:0; height:100%; background:#0a0a14; color:#ddd; font-family:-apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; overflow:hidden; }
+  .toolbar { display:flex; align-items:center; gap:14px; padding:10px 16px; background:#0d0d1a; border-bottom:1px solid #1f1f30; }
+  .toolbar .title { font-weight:700; letter-spacing:2px; color:#e87a5b; font-size:12px; }
+  .toolbar .meta { color:#888; font-size:12px; border-left:1px solid #2a2a4a; padding-left:14px; }
+  .toolbar .status { color:#555; font-size:11px; margin-left:auto; }
+  .toolbar button { background:#0d0d1a; border:1px solid #2a2a4a; color:#ddd; padding:7px 16px; border-radius:6px; font-size:11px; letter-spacing:1px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .toolbar button.primary { background:#7ad17a; color:#000; border-color:#7ad17a; }
+  .toolbar button.danger { color:#e87a5b; }
+  .toolbar button:disabled { opacity:0.4; cursor:not-allowed; }
+  .frame-wrap { position:absolute; inset:46px 0 0 0; }
+  iframe { width:100%; height:100%; border:0; display:block; }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <div class="title">THUMB EDITOR</div>
+    <div class="meta">slot {{ slot_label }} · {{ video_title }}</div>
+    <span id="status" class="status">Loading miniPaint…</span>
+    <button id="changeTextBtn" onclick="changeTextInSelection()" disabled title="Select a region containing text first, then click to replace the text while preserving font/style. ~$0.04 + ~20s." style="background:#1a1410; border-color:#f5b942; color:#f5b942;">CHANGE TEXT…</button>
+    <button id="downloadBtn" onclick="saveAsDownload()" disabled title="Download a copy to your Downloads folder (does not touch the card)">SAVE AS…</button>
+    <button id="saveBtn" class="primary" onclick="saveToSlot()" disabled>SAVE TO SLOT {{ slot_label }}</button>
+    <button onclick="goBackToCard()">CLOSE</button>
+  </div>
+  <div class="frame-wrap">
+    <iframe id="mp" src="/static/minipaint/index.html" allow="camera"></iframe>
+  </div>
+
+<script>
+const VID = {{ vid }};
+const SLOT = {{ slot }};
+const THUMB_URL = {{ thumb_url|tojson }};
+
+function goBackToCard() {
+  // If this tab was script-opened (window.opener exists), close it — the
+  // opener still has the card open. Otherwise navigate to the card deep-link.
+  try {
+    if (window.opener && !window.opener.closed) {
+      window.close();
+      // Some browsers refuse to close even script-opened tabs; fall through.
+      setTimeout(function(){ window.location.href = '/?card=' + VID; }, 100);
+      return;
+    }
+  } catch (e) {}
+  window.location.href = '/?card=' + VID;
+}
+
+function setStatus(msg, color) {
+  const el = document.getElementById('status');
+  el.textContent = msg || '';
+  el.style.color = color || '#555';
+}
+
+const frame = document.getElementById('mp');
+frame.addEventListener('load', function() {
+  // miniPaint's bundle finishes booting a moment after the iframe load event.
+  // Poll for Layers being defined, then insert the thumb as layer 1.
+  const start = Date.now();
+  (function waitForLayers() {
+    const W = frame.contentWindow;
+    if (W && W.Layers && typeof W.Layers.insert === 'function') {
+      loadThumbAsLayer();
+      installScrollZoomDampener();
+      return;
+    }
+    if (Date.now() - start > 15000) {
+      setStatus('miniPaint failed to load (timeout)', '#e07070');
+      return;
+    }
+    setTimeout(waitForLayers, 100);
+  })();
+});
+
+// Halve miniPaint's scroll-zoom step by swallowing every other wheel event
+// on the canvas viewport. Capture-phase listener runs before miniPaint's own
+// handler. We only touch wheel events with ctrlKey OR over #middle_area, so
+// scrolling the layers panel / tool sidebar stays at normal speed.
+function installScrollZoomDampener() {
+  try {
+    const doc = frame.contentDocument;
+    if (!doc) return;
+    const middle = doc.getElementById('middle_area');
+    if (!middle) return;
+    let count = 0;
+    middle.addEventListener('wheel', function(ev) {
+      count++;
+      // Pass every other event through; swallow the rest before miniPaint sees them.
+      if (count % 2 === 0) {
+        ev.stopImmediatePropagation();
+        ev.preventDefault();
+      }
+    }, { capture: true, passive: false });
+  } catch (e) {
+    // Cross-origin would block this, but iframe is same-origin so should never hit.
+    console.warn('scroll-zoom dampener install failed:', e);
+  }
+}
+
+function enableSaveButtons() {
+  document.getElementById('saveBtn').disabled = false;
+  document.getElementById('downloadBtn').disabled = false;
+  document.getElementById('changeTextBtn').disabled = false;
+}
+
+function loadThumbAsLayer() {
+  if (!THUMB_URL) {
+    setStatus('Ready (no source thumb — start from blank)', '#4caf50');
+    enableSaveButtons();
+    return;
+  }
+  setStatus('Loading thumbnail…', '#f5b942');
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = function() {
+    const W = frame.contentWindow;
+    try {
+      W.Layers.insert({
+        name: 'thumbnail_slot_' + SLOT,
+        type: 'image',
+        data: img,
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+        width_original: img.naturalWidth,
+        height_original: img.naturalHeight,
+      });
+      setStatus('Loaded ' + img.naturalWidth + '×' + img.naturalHeight, '#4caf50');
+      enableSaveButtons();
+    } catch (e) {
+      setStatus('Layers.insert failed: ' + e.message, '#e07070');
+    }
+  };
+  img.onerror = function() {
+    setStatus('Could not load thumbnail at ' + THUMB_URL, '#e07070');
+  };
+  img.src = THUMB_URL;
+}
+
+// Slugify the video title for a sensible download filename
+function _filenameSlug(s) {
+  return (s || 'thumb')
+    .replace(/[^a-z0-9\-_]+/gi, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 60) || 'thumb';
+}
+
+function _exportCanvas(cb) {
+  const W = frame.contentWindow;
+  if (!W || !W.Layers) { setStatus('miniPaint not ready', '#e07070'); return; }
+  const dim = W.Layers.get_dimensions();
+  const tmp = document.createElement('canvas');
+  tmp.width = dim.width;
+  tmp.height = dim.height;
+  W.Layers.convert_layers_to_canvas(tmp.getContext('2d'));
+  tmp.toBlob(cb, 'image/png');
+}
+
+// Crop the current full-canvas composite to (x, y, w, h) and hand a PNG Blob to cb.
+function _cropCanvasRegion(x, y, w, h, cb) {
+  const W = frame.contentWindow;
+  if (!W || !W.Layers) { cb(null, 'miniPaint not ready'); return; }
+  const dim = W.Layers.get_dimensions();
+  const full = document.createElement('canvas');
+  full.width = dim.width;
+  full.height = dim.height;
+  W.Layers.convert_layers_to_canvas(full.getContext('2d'));
+  const crop = document.createElement('canvas');
+  crop.width = w;
+  crop.height = h;
+  crop.getContext('2d').drawImage(full, x, y, w, h, 0, 0, w, h);
+  crop.toBlob(function(blob) {
+    if (!blob) { cb(null, 'crop export failed'); return; }
+    cb(blob, null);
+  }, 'image/png');
+}
+
+function changeTextInSelection() {
+  const W = frame.contentWindow;
+  if (!W || !W.Layers || !W.Layers.Base_selection) {
+    setStatus('miniPaint not ready', '#e07070');
+    return;
+  }
+  const sel = W.Layers.Base_selection.get_selection();
+  if (!sel || sel.x == null || sel.y == null || !sel.width || !sel.height) {
+    setStatus('Select a region containing the text first (use the rectangle-select tool).', '#e07070');
+    return;
+  }
+  const newText = window.prompt('Replace the text in the selection with:', '');
+  if (newText == null) return;
+  const trimmed = newText.trim();
+  if (!trimmed) { setStatus('Empty text — nothing to do.', '#e07070'); return; }
+
+  const btn = document.getElementById('changeTextBtn');
+  btn.disabled = true;
+  const x = Math.round(sel.x), y = Math.round(sel.y);
+  const w = Math.round(sel.width), h = Math.round(sel.height);
+  setStatus('Exporting ' + w + '×' + h + ' crop…', '#f5b942');
+
+  _cropCanvasRegion(x, y, w, h, function(cropBlob, err) {
+    if (err) { setStatus(err, '#e07070'); btn.disabled = false; return; }
+    setStatus('Calling Gemini (~20s)…', '#f5b942');
+    const fd = new FormData();
+    fd.append('crop', cropBlob, 'crop.png');
+    fd.append('new_text', trimmed);
+    fetch('/api/thumb/change-text', { method: 'POST', body: fd })
+      .then(function(r) {
+        if (!r.ok) return r.json().then(function(j) { throw new Error(j.error || ('http ' + r.status)); });
+        return r.blob();
+      })
+      .then(function(pngBlob) {
+        // Paste the returned PNG back at the selection's original coords as a new layer
+        const url = URL.createObjectURL(pngBlob);
+        const img = new Image();
+        img.onload = function() {
+          try {
+            W.Layers.insert({
+              name: 'text→ ' + trimmed.slice(0, 20),
+              type: 'image',
+              data: img,
+              x: x,
+              y: y,
+              width: w,
+              height: h,
+              width_original: img.naturalWidth,
+              height_original: img.naturalHeight,
+            });
+            setStatus('Text replaced — pasted as new layer at (' + x + ',' + y + ')', '#4caf50');
+          } catch (e) {
+            setStatus('Paste failed: ' + e.message, '#e07070');
+          }
+          btn.disabled = false;
+          setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
+        };
+        img.onerror = function() {
+          setStatus('Returned PNG could not be loaded', '#e07070');
+          btn.disabled = false;
+        };
+        img.src = url;
+      })
+      .catch(function(e) {
+        setStatus('Change-text failed: ' + e.message, '#e07070');
+        btn.disabled = false;
+      });
+  });
+}
+
+function saveAsDownload() {
+  setStatus('Exporting…', '#f5b942');
+  _exportCanvas(function(blob) {
+    if (!blob) { setStatus('Export failed', '#e07070'); return; }
+    const ts = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16);
+    const fname = _filenameSlug({{ video_title|tojson }}) + '_slot' + (SLOT + 1) + '_' + ts + '.png';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
+    setStatus('Downloaded ' + fname + ' (' + Math.round(blob.size / 1024) + 'KB)', '#4caf50');
+  });
+}
+
+function saveToSlot() {
+  const W = frame.contentWindow;
+  if (!W || !W.Layers) { setStatus('miniPaint not ready', '#e07070'); return; }
+  setStatus('Exporting canvas…', '#f5b942');
+  document.getElementById('saveBtn').disabled = true;
+  try {
+    const dim = W.Layers.get_dimensions();
+    const tmp = document.createElement('canvas');
+    tmp.width = dim.width;
+    tmp.height = dim.height;
+    W.Layers.convert_layers_to_canvas(tmp.getContext('2d'));
+    tmp.toBlob(function(blob) {
+      if (!blob) { setStatus('Export failed', '#e07070'); document.getElementById('saveBtn').disabled = false; return; }
+      setStatus('Uploading ' + Math.round(blob.size / 1024) + 'KB…', '#f5b942');
+      const fd = new FormData();
+      fd.append('file', blob, 'edited_slot_' + SLOT + '.png');
+      fetch('/api/videos/' + VID + '/thumb-slot/' + SLOT, { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(j) {
+          if (j.error) throw new Error(j.error);
+          setStatus('Saved → slot ' + j.slot_label + ' (' + j.url + ')', '#4caf50');
+          document.getElementById('saveBtn').disabled = false;
+          // Notify the parent studio window so it can re-render without a reload
+          if (window.opener && !window.opener.closed) {
+            try {
+              window.opener.postMessage({ type: 'thumb-slot-updated', vid: VID, slot: SLOT, url: j.url, original_thumbs: j.original_thumbs }, '*');
+            } catch (e) {}
+          }
+        })
+        .catch(function(err) {
+          setStatus('Save failed: ' + err.message, '#e07070');
+          document.getElementById('saveBtn').disabled = false;
+        });
+    }, 'image/png');
+  } catch (e) {
+    setStatus('Export error: ' + e.message, '#e07070');
+    document.getElementById('saveBtn').disabled = false;
+  }
+}
+</script>
+</body>
+</html>

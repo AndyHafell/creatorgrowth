@@ -1,0 +1,69 @@
+name: CI
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  editor:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    env:
+      # Build-time stubs to pass the app's env validation — nothing real.
+      DATABASE_URL: "postgresql://opencut:opencut@localhost:5432/opencut"
+      BETTER_AUTH_SECRET: "ci-placeholder"
+      NEXT_PUBLIC_SITE_URL: "http://localhost:3000"
+      UPSTASH_REDIS_REST_URL: "https://placeholder.example.com"
+      UPSTASH_REDIS_REST_TOKEN: "placeholder"
+      NEXT_PUBLIC_MARBLE_API_URL: "https://placeholder.example.com"
+      MARBLE_WORKSPACE_KEY: "placeholder"
+      FREESOUND_CLIENT_ID: "placeholder"
+      FREESOUND_API_KEY: "placeholder"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 1.3.x matches the bun that wrote bun.lock — 1.2.18 hoists differently,
+      # leaving a duplicate nested `next` that breaks next.config.ts type-check.
+      - name: Install Bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
+        with:
+          bun-version: 1.3.11
+
+      - name: Cache Bun modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-1.3.11-${{ hashFiles('editor/bun.lock') }}
+
+      - name: Install dependencies
+        working-directory: editor/apps/web
+        run: bun install
+
+      - name: Run tests (magic-pass suite)
+        working-directory: editor/apps/web
+        run: bun test src/lib/magic-pass
+
+      - name: Build
+        working-directory: editor/apps/web
+        run: bun run build
+
+  platform:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compile all Python
+        run: python3 -m py_compile $(git ls-files '*.py')

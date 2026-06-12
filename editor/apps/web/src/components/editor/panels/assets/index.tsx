@@ -1,0 +1,48 @@
+"use client";
+
+import { Separator } from "@/components/ui/separator";
+import { type Tab, useAssetsPanelStore } from "@/stores/assets-panel-store";
+import { TabBar } from "./tabbar";
+import { Captions } from "./views/captions";
+import { MediaView } from "./views/assets";
+import { ScreenShareView } from "./views/screen-share";
+import { ScriptView } from "./views/script";
+import { SettingsView } from "./views/settings";
+import { SoundsView } from "./views/sounds";
+import { StickersView } from "./views/stickers";
+import { TextView } from "./views/text";
+import { EffectsView } from "./views/effects";
+
+export function AssetsPanel() {
+	const { activeTab } = useAssetsPanelStore();
+
+	const viewMap: Record<Tab, React.ReactNode> = {
+		script: <ScriptView />,
+		"screen-share": <ScreenShareView />,
+		media: <MediaView />,
+		sounds: <SoundsView />,
+		text: <TextView />,
+		stickers: <StickersView />,
+		effects: <EffectsView />,
+		transitions: (
+			<div className="text-muted-foreground p-4">
+				Transitions view coming soon...
+			</div>
+		),
+		captions: <Captions />,
+		adjustment: (
+			<div className="text-muted-foreground p-4">
+				Adjustment view coming soon...
+			</div>
+		),
+		settings: <SettingsView />,
+	};
+
+	return (
+		<div className="panel bg-background flex h-full rounded-sm border overflow-hidden">
+			<TabBar />
+			<Separator orientation="vertical" />
+			<div className="flex-1 overflow-hidden">{viewMap[activeTab]}</div>
+		</div>
+	);
+}

@@ -1,0 +1,909 @@
+import type { EditorCore } from "@/core";
+import { TICKS_PER_SECOND } from "@/lib/wasm";
+import {
+	clampRetimeRate,
+	shouldMaintainPitch,
+} from "@/lib/retime/rate";
+import type { AudioClipSource } from "@/lib/media/audio";
+import { createAudioContext, collectAudioClips } from "@/lib/media/audio";
+import {
+	buildAudioGainAutomation,
+	hasAnimatedVolume,
+} from "@/lib/timeline/audio-state";
+import { createAudioMasteringChain } from "@/lib/media/audio-mastering";
+import {
+	getClipTimeAtSourceTime,
+	getSourceTimeAtClipTime,
+	renderRetimedBuffer,
+} from "@/lib/retime";
+import {
+	ALL_FORMATS,
+	AudioBufferSink,
+	BlobSource,
+	Input,
+	type WrappedAudioBuffer,
+} from "mediabunny";
+
+export class AudioManager {
+	private audioContext: AudioContext | null = null;
+	private masterGain: GainNode | null = null;
+	private playbackStartTime = 0;
+	private playbackStartContextTime = 0;
+	private scheduleTimer: number | null = null;
+	private lookaheadSeconds = 2;
+	private scheduleIntervalMs = 500;
+	private clips: AudioClipSource[] = [];
+	private sinks = new Map<string, AudioBufferSink>();
+	private inputs = new Map<string, Input>();
+	private activeClipIds = new Set<string>();
+	private clipIterators = new Map<
+		string,
+		AsyncGenerator<WrappedAudioBuffer, void, unknown>
+	>();
+	private queuedSources = new Set<AudioBufferSourceNode>();
+	private preparedClipBuffers = new Map<string, Promise<AudioBuffer | null>>();
+	private decodedBuffers = new Map<string, Promise<AudioBuffer | null>>();
+	private playbackSessionId = 0;
+	private lastIsPlaying = false;
+	private lastVolume = 1;
+	private lastSpeed = 1;
+	private lastIsScrubbing = false;
+	/** Playback speed captured at session start — all session math uses this. */
+	private sessionSpeed = 1;
+	/** Review-speed clips play through native media elements (preservesPitch). */
+	private mediaClips = new Set<{
+		el: HTMLAudioElement;
+		clipVolume: number;
+		timers: number[];
+	}>();
+	private sourceUrls = new Map<string, string>();
+	private playbackLatencyCompensationSeconds = 0;
+	private unsubscribers: Array<() => void> = [];
+
+	constructor(private editor: EditorCore) {
+		this.lastVolume = this.editor.playback.getVolume();
+
+		this.unsubscribers.push(
+			this.editor.playback.subscribe(this.handlePlaybackChange),
+			this.editor.timeline.subscribe(this.handleTimelineChange),
+			this.editor.media.subscribe(this.handleTimelineChange),
+		);
+		if (typeof window !== "undefined") {
+			window.addEventListener("playback-seek", this.handleSeek);
+		}
+	}
+
+	dispose(): void {
+		this.stopPlayback();
+		for (const unsub of this.unsubscribers) {
+			unsub();
+		}
+		this.unsubscribers = [];
+		if (typeof window !== "undefined") {
+			window.removeEventListener("playback-seek", this.handleSeek);
+		}
+		this.disposeSinks();
+		this.preparedClipBuffers.clear();
+		this.decodedBuffers.clear();
+		if (this.audioContext) {
+			void this.audioContext.close();
+			this.audioContext = null;
+			this.masterGain = null;
+		}
+	}
+
+	private handlePlaybackChange = (): void => {
+		const isPlaying = this.editor.playback.getIsPlaying();
+		const volume = this.editor.playback.getVolume();
+		const speed = this.editor.playback.getSpeed();
+		const isScrubbing = this.editor.playback.getIsScrubbing();
+
+		if (volume !== this.lastVolume) {
+			this.lastVolume = volume;
+			this.updateGain();
+		}
+
+		// Seeks landing mid-scrub stop audio (handleSeek) and nothing restarted
+		// it when the scrub ended — click-jumping the playhead while playing
+		// went silent until the next play/pause. Restart on scrub release.
+		if (isScrubbing !== this.lastIsScrubbing) {
+			this.lastIsScrubbing = isScrubbing;
+			if (!isScrubbing && isPlaying) {
+				this.lastIsPlaying = isPlaying;
+				this.lastSpeed = speed;
+				void this.startPlayback({
+					time: this.editor.playback.getCurrentTime() / TICKS_PER_SECOND,
+				});
+				return;
+			}
+		}
+
+		// Review speed changed mid-play: restart the session — every clip is
+		// rescheduled on the compressed clock with pitch-preserved buffers.
+		if (speed !== this.lastSpeed) {
+			this.lastSpeed = speed;
+			if (isPlaying) {
+				this.lastIsPlaying = isPlaying;
+				void this.startPlayback({
+					time: this.editor.playback.getCurrentTime() / TICKS_PER_SECOND,
+				});
+				return;
+			}
+		}
+
+		if (isPlaying !== this.lastIsPlaying) {
+			this.lastIsPlaying = isPlaying;
+			if (isPlaying) {
+				void this.startPlayback({
+					time: this.editor.playback.getCurrentTime() / TICKS_PER_SECOND,
+				});
+			} else {
+				this.stopPlayback();
+			}
+		}
+	};
+
+	private handleSeek = (event: Event): void => {
+		const detail = (event as CustomEvent<{ time: number }>).detail;
+		if (!detail) return;
+
+		if (this.editor.playback.getIsScrubbing()) {
+			this.stopPlayback();
+			return;
+		}
+
+		if (this.editor.playback.getIsPlaying()) {
+			void this.startPlayback({ time: detail.time / TICKS_PER_SECOND });
+			return;
+		}
+
+		this.stopPlayback();
+	};
+
+	private handleTimelineChange = (): void => {
+		this.disposeSinks();
+		this.preparedClipBuffers.clear();
+		this.decodedBuffers.clear();
+
+		if (!this.editor.playback.getIsPlaying()) return;
+
+		void this.startPlayback({ time: this.editor.playback.getCurrentTime() / TICKS_PER_SECOND });
+	};
+
+	private ensureAudioContext(): AudioContext | null {
+		if (this.audioContext) return this.audioContext;
+		if (typeof window === "undefined") return null;
+
+		this.audioContext = createAudioContext();
+		const { input } = createAudioMasteringChain({
+			audioContext: this.audioContext,
+			destination: this.audioContext.destination,
+		});
+		this.masterGain = input;
+		this.masterGain.gain.value = this.lastVolume;
+		return this.audioContext;
+	}
+
+	private updateGain(): void {
+		for (const entry of this.mediaClips) {
+			entry.el.volume = Math.max(
+				0,
+				Math.min(1, entry.clipVolume * this.lastVolume),
+			);
+		}
+		if (!this.masterGain) return;
+		this.masterGain.gain.value = this.lastVolume;
+	}
+
+	/** Current TIMELINE time — context elapsed scaled by the review speed. */
+	private getPlaybackTime(): number {
+		if (!this.audioContext) return this.playbackStartTime;
+		const elapsed =
+			this.audioContext.currentTime - this.playbackStartContextTime;
+		return this.playbackStartTime + elapsed * this.sessionSpeed;
+	}
+
+	/** Timeline seconds since session start → context seconds (compressed at speed). */
+	private timelineToContextOffset(timelineOffset: number): number {
+		return timelineOffset / this.sessionSpeed;
+	}
+
+	private async startPlayback({ time }: { time: number }): Promise<void> {
+		const audioContext = this.ensureAudioContext();
+		if (!audioContext) return;
+
+		this.stopPlayback();
+		this.playbackSessionId++;
+		this.playbackLatencyCompensationSeconds = 0;
+
+		const tracks = this.editor.scenes.getActiveScene().tracks;
+		const mediaAssets = this.editor.media.getAssets();
+		const duration = this.editor.timeline.getTotalDuration();
+
+		if (duration <= 0) return;
+
+		if (audioContext.state === "suspended") {
+			await audioContext.resume();
+		}
+
+		this.clips = await collectAudioClips({ tracks, mediaAssets });
+		if (!this.editor.playback.getIsPlaying()) return;
+
+		this.playbackStartTime = time;
+		this.playbackStartContextTime = audioContext.currentTime;
+		this.sessionSpeed = Math.max(0.25, this.editor.playback.getSpeed());
+
+		this.scheduleUpcomingClips();
+
+		if (typeof window !== "undefined") {
+			this.scheduleTimer = window.setInterval(() => {
+				this.scheduleUpcomingClips();
+			}, this.scheduleIntervalMs);
+		}
+	}
+
+	private scheduleUpcomingClips(): void {
+		if (!this.editor.playback.getIsPlaying()) return;
+
+		const currentTime = this.getPlaybackTime();
+		// Lookahead is wall-clock headroom — cover speed× more timeline.
+		const windowEnd = currentTime + this.lookaheadSeconds * this.sessionSpeed;
+
+		for (const clip of this.clips) {
+			if (clip.muted) continue;
+			if (this.activeClipIds.has(clip.id)) continue;
+
+			const clipEnd = clip.startTime + clip.duration;
+			if (clipEnd <= currentTime) continue;
+			if (clip.startTime > windowEnd) continue;
+
+			this.activeClipIds.add(clip.id);
+			// Review speed: clips play through native media elements — the
+			// browser's preservesPitch stretcher (same engine as Raw Cut's
+			// playbackRate) beats any JS time-stretch.
+			if (this.sessionSpeed !== 1) {
+				this.scheduleMediaElementClip({
+					clip,
+					startTime: currentTime,
+					sessionId: this.playbackSessionId,
+				});
+			} else if (this.shouldUsePreparedClipBuffer({ clip })) {
+				this.schedulePreparedClip({
+					clip,
+					startTime: currentTime,
+					sessionId: this.playbackSessionId,
+				}).catch((err) => {
+					console.error("[audio] prepared clip failed:", clip.id, err);
+				});
+			} else {
+				this.runClipIterator({
+					clip,
+					startTime: currentTime,
+					sessionId: this.playbackSessionId,
+				}).catch((err) => {
+					console.error("[audio] clip iterator failed:", clip.id, err);
+				});
+			}
+		}
+	}
+
+	private stopPlayback(): void {
+		if (this.scheduleTimer && typeof window !== "undefined") {
+			window.clearInterval(this.scheduleTimer);
+		}
+		this.scheduleTimer = null;
+		this.stopMediaClips();
+
+		for (const iterator of this.clipIterators.values()) {
+			void iterator.return();
+		}
+		this.clipIterators.clear();
+		this.activeClipIds.clear();
+
+		for (const source of this.queuedSources) {
+			try {
+				source.stop();
+			} catch {}
+			source.disconnect();
+		}
+		this.queuedSources.clear();
+	}
+
+	private async runClipIterator({
+		clip,
+		startTime,
+		sessionId,
+	}: {
+		clip: AudioClipSource;
+		startTime: number;
+		sessionId: number;
+	}): Promise<void> {
+		const audioContext = this.ensureAudioContext();
+		if (!audioContext) return;
+
+		const sink = await this.getAudioSink({ clip });
+		if (!sink || !this.editor.playback.getIsPlaying()) return;
+		if (sessionId !== this.playbackSessionId) return;
+
+		const clipStart = clip.startTime;
+		const clipEnd = clip.startTime + clip.duration;
+		const playbackTimeAfterSinkReady = this.getPlaybackTime();
+		const iteratorStartTime = Math.max(
+			startTime,
+			clipStart,
+			playbackTimeAfterSinkReady,
+		);
+		if (iteratorStartTime >= clipEnd) {
+			return;
+		}
+		const sourceStartTime =
+			clip.trimStart +
+			getSourceTimeAtClipTime({
+				clipTime: iteratorStartTime - clip.startTime,
+				retime: clip.retime,
+			});
+
+		const iterator = sink.buffers(sourceStartTime);
+		this.clipIterators.set(clip.id, iterator);
+		let consecutiveDroppedBufferCount = 0;
+
+		for await (const { buffer, timestamp } of iterator) {
+			if (!this.editor.playback.getIsPlaying()) return;
+			if (sessionId !== this.playbackSessionId) return;
+
+			const timelineTime =
+				clip.startTime +
+				getClipTimeAtSourceTime({
+					sourceTime: timestamp - clip.trimStart,
+					retime: clip.retime,
+				});
+			if (timelineTime >= clipEnd) break;
+
+			const node = audioContext.createBufferSource();
+			node.buffer = buffer;
+			if (clip.retime) {
+				node.playbackRate.value = clampRetimeRate({ rate: clip.retime.rate });
+			}
+			const clipGain = audioContext.createGain();
+			clipGain.gain.value = clip.volume;
+			node.connect(clipGain);
+			clipGain.connect(this.masterGain ?? audioContext.destination);
+
+			const startTimestamp =
+				this.playbackStartContextTime +
+				this.playbackLatencyCompensationSeconds +
+				(timelineTime - this.playbackStartTime);
+
+			if (startTimestamp >= audioContext.currentTime) {
+				node.start(startTimestamp);
+				consecutiveDroppedBufferCount = 0;
+			} else {
+				const offset = audioContext.currentTime - startTimestamp;
+				if (offset < buffer.duration) {
+					node.start(audioContext.currentTime, offset);
+					consecutiveDroppedBufferCount = 0;
+				} else {
+					consecutiveDroppedBufferCount += 1;
+					if (consecutiveDroppedBufferCount >= 5) {
+						const nextCompensationSeconds = Math.max(
+							this.playbackLatencyCompensationSeconds,
+							Math.min(0.25, offset + 0.01),
+						);
+						if (
+							nextCompensationSeconds >
+							this.playbackLatencyCompensationSeconds + 0.001
+						) {
+							this.playbackLatencyCompensationSeconds = nextCompensationSeconds;
+						}
+						const resyncStartTime = this.getPlaybackTime();
+						this.clipIterators.delete(clip.id);
+						void this.runClipIterator({
+							clip,
+							startTime: resyncStartTime,
+							sessionId,
+						});
+						return;
+					}
+					continue;
+				}
+			}
+
+			this.queuedSources.add(node);
+			node.addEventListener("ended", () => {
+				node.disconnect();
+				clipGain.disconnect();
+				this.queuedSources.delete(node);
+			});
+
+			const aheadTime = timelineTime - this.getPlaybackTime();
+			if (aheadTime >= 1) {
+				await this.waitUntilCaughtUp({ timelineTime, targetAhead: 1 });
+				if (sessionId !== this.playbackSessionId) return;
+			}
+		}
+
+		this.clipIterators.delete(clip.id);
+		// don't remove from activeClipIds - prevents scheduler from restarting this clip
+		// the set is cleared on stopPlayback anyway
+	}
+
+	private getSourceUrl(clip: AudioClipSource): string {
+		let url = this.sourceUrls.get(clip.sourceKey);
+		if (!url) {
+			url = URL.createObjectURL(clip.file);
+			this.sourceUrls.set(clip.sourceKey, url);
+		}
+		return url;
+	}
+
+	/**
+	 * Review-speed playback: one hidden HTMLAudioElement per clip, seeked to
+	 * the clip's source position and run at rate×speed with the browser's
+	 * native preservesPitch stretcher — the exact engine Raw Cut's player
+	 * uses, far cleaner than JS time-stretching. Curve retimes approximate to
+	 * their flat rate and volume keyframes hold the base volume — fine for a
+	 * review pass.
+	 */
+	private scheduleMediaElementClip({
+		clip,
+		startTime,
+		sessionId,
+	}: {
+		clip: AudioClipSource;
+		startTime: number;
+		sessionId: number;
+	}): void {
+		const speed = this.sessionSpeed;
+		const rate = clampRetimeRate({ rate: clip.retime?.rate ?? 1 });
+		const clipEnd = clip.startTime + clip.duration;
+		const effectiveStart = Math.max(
+			startTime,
+			clip.startTime,
+			this.getPlaybackTime(),
+		);
+		if (effectiveStart >= clipEnd) return;
+
+		const el = new Audio(this.getSourceUrl(clip));
+		el.preload = "auto";
+		el.playbackRate = Math.min(16, rate * speed);
+		el.volume = Math.max(0, Math.min(1, clip.volume * this.lastVolume));
+		const entry = { el, clipVolume: clip.volume, timers: [] as number[] };
+		this.mediaClips.add(entry);
+
+		const mediaAt = (timelineTime: number) =>
+			clip.trimStart +
+			getSourceTimeAtClipTime({
+				clipTime: timelineTime - clip.startTime,
+				retime: clip.retime,
+			});
+
+		// Pre-seek during the lookahead so the pipeline is primed — a cold
+		// element pays its startup latency out of the clip's first word.
+		el.currentTime = mediaAt(effectiveStart);
+
+		const dispose = () => {
+			for (const timer of entry.timers) window.clearTimeout(timer);
+			el.pause();
+			el.removeAttribute("src");
+			el.load();
+			this.mediaClips.delete(entry);
+		};
+
+		const begin = () => {
+			if (
+				sessionId !== this.playbackSessionId ||
+				!this.editor.playback.getIsPlaying()
+			) {
+				dispose();
+				return;
+			}
+			// Words beat lip-sync at review speed: when start fires a touch
+			// late, still play from the clip's head (≤150ms of context slack)
+			// instead of skipping into the first word. Hard-late starts skip.
+			const nowTimeline = this.getPlaybackTime();
+			const lateContextSec = (nowTimeline - effectiveStart) / speed;
+			const from = lateContextSec > 0.15 ? nowTimeline : effectiveStart;
+			if (from >= clipEnd) {
+				dispose();
+				return;
+			}
+			const target = mediaAt(from);
+			if (Math.abs(el.currentTime - target) > 0.05) {
+				el.currentTime = target;
+			}
+			void el.play().catch((err) => {
+				console.error("[audio] media element play failed:", clip.id, err);
+				dispose();
+			});
+			// Stop from the live clock so a head-start doesn't smear the tail
+			// over the next cut.
+			const stopMs = Math.max(
+				0,
+				((clipEnd - this.getPlaybackTime()) / speed) * 1000,
+			);
+			entry.timers.push(window.setTimeout(dispose, stopMs + 30));
+		};
+
+		const delayMs = Math.max(
+			0,
+			((effectiveStart - this.getPlaybackTime()) / speed) * 1000,
+		);
+		if (delayMs < 20) {
+			begin();
+		} else {
+			entry.timers.push(window.setTimeout(begin, delayMs));
+		}
+	}
+
+	private stopMediaClips(): void {
+		for (const entry of this.mediaClips) {
+			for (const timer of entry.timers) window.clearTimeout(timer);
+			entry.el.pause();
+			entry.el.removeAttribute("src");
+			entry.el.load();
+		}
+		this.mediaClips.clear();
+	}
+
+	private async schedulePreparedClip({
+		clip,
+		startTime,
+		sessionId,
+	}: {
+		clip: AudioClipSource;
+		startTime: number;
+		sessionId: number;
+	}): Promise<void> {
+		const audioContext = this.ensureAudioContext();
+		if (!audioContext) return;
+
+		const speed = this.sessionSpeed;
+		const buffer = await this.getPreparedClipBuffer({ clip });
+		if (!buffer || !this.editor.playback.getIsPlaying()) return;
+		if (sessionId !== this.playbackSessionId) return;
+
+		const clipStart = clip.startTime;
+		const clipEnd = clip.startTime + clip.duration;
+		const playbackTimeAfterReady = this.getPlaybackTime();
+		const effectiveStartTime = Math.max(
+			startTime,
+			clipStart,
+			playbackTimeAfterReady,
+		);
+		if (effectiveStartTime >= clipEnd) {
+			return;
+		}
+
+		const node = audioContext.createBufferSource();
+		node.buffer = buffer;
+		const clipGain = audioContext.createGain();
+		node.connect(clipGain);
+		clipGain.connect(this.masterGain ?? audioContext.destination);
+
+		// The stretched buffer runs at 1/speed of timeline time, so both the
+		// session offset and the in-buffer offset compress by the speed.
+		const startTimestamp =
+			this.playbackStartContextTime +
+			this.playbackLatencyCompensationSeconds +
+			this.timelineToContextOffset(effectiveStartTime - this.playbackStartTime);
+		const clipOffset = this.timelineToContextOffset(
+			effectiveStartTime - clipStart,
+		);
+		let actualStartTimestamp = startTimestamp;
+		let actualClipOffset = clipOffset;
+
+		if (startTimestamp >= audioContext.currentTime) {
+			node.start(startTimestamp, clipOffset);
+		} else {
+			const lateOffset = audioContext.currentTime - startTimestamp;
+			actualStartTimestamp = audioContext.currentTime;
+			actualClipOffset = clipOffset + lateOffset;
+			node.start(actualStartTimestamp, actualClipOffset);
+		}
+
+		this.scheduleClipGainAutomation({
+			audioContext,
+			clip,
+			clipGain,
+			startTimestamp: actualStartTimestamp,
+			// Automation points are clip-local TIMELINE seconds.
+			startLocalTime: actualClipOffset * speed,
+		});
+
+		this.queuedSources.add(node);
+		node.addEventListener("ended", () => {
+			node.disconnect();
+			clipGain.disconnect();
+			this.queuedSources.delete(node);
+		});
+	}
+
+	private waitUntilCaughtUp({
+		timelineTime,
+		targetAhead,
+	}: {
+		timelineTime: number;
+		targetAhead: number;
+	}): Promise<void> {
+		return new Promise((resolve) => {
+			const checkInterval = setInterval(() => {
+				if (!this.editor.playback.getIsPlaying()) {
+					clearInterval(checkInterval);
+					resolve();
+					return;
+				}
+
+				const playbackTime = this.getPlaybackTime();
+				if (timelineTime - playbackTime < targetAhead) {
+					clearInterval(checkInterval);
+					resolve();
+				}
+			}, 100);
+		});
+	}
+
+	private disposeSinks(): void {
+		for (const iterator of this.clipIterators.values()) {
+			void iterator.return();
+		}
+		this.clipIterators.clear();
+		this.activeClipIds.clear();
+
+		for (const input of this.inputs.values()) {
+			input.dispose();
+		}
+		this.inputs.clear();
+		this.sinks.clear();
+
+		for (const url of this.sourceUrls.values()) {
+			URL.revokeObjectURL(url);
+		}
+		this.sourceUrls.clear();
+	}
+
+	private shouldUsePreparedClipBuffer({
+		clip,
+	}: {
+		clip: AudioClipSource;
+	}): boolean {
+		return (
+			this.hasCurveRetime({ clip }) ||
+			hasAnimatedVolume({ element: clip.timelineElement }) ||
+			shouldMaintainPitch({
+				rate: clip.retime?.rate ?? 1,
+				maintainPitch: clip.retime?.maintainPitch,
+			})
+		);
+	}
+
+	private hasCurveRetime({ clip }: { clip: AudioClipSource }): boolean {
+		const mode = (clip.retime as { mode?: unknown } | undefined)?.mode;
+		return mode === "curve";
+	}
+
+	private scheduleClipGainAutomation({
+		audioContext,
+		clip,
+		clipGain,
+		startTimestamp,
+		startLocalTime,
+	}: {
+		audioContext: AudioContext;
+		clip: AudioClipSource;
+		clipGain: GainNode;
+		startTimestamp: number;
+		startLocalTime: number;
+	}): void {
+		clipGain.gain.cancelScheduledValues(startTimestamp);
+		clipGain.gain.setValueAtTime(clip.volume, startTimestamp);
+
+		if (!hasAnimatedVolume({ element: clip.timelineElement })) {
+			return;
+		}
+
+		const points = buildAudioGainAutomation({
+			element: clip.timelineElement,
+			fromLocalTime: startLocalTime,
+			toLocalTime: clip.duration,
+		});
+
+		if (points.length === 0) {
+			return;
+		}
+
+		clipGain.gain.setValueAtTime(points[0].gain, startTimestamp);
+		for (let index = 1; index < points.length; index++) {
+			const point = points[index];
+			// localTime is timeline seconds; ramps compress at review speed.
+			const pointTimestamp =
+				startTimestamp +
+				this.timelineToContextOffset(point.localTime - startLocalTime);
+			if (pointTimestamp < audioContext.currentTime) {
+				continue;
+			}
+
+			clipGain.gain.linearRampToValueAtTime(point.gain, pointTimestamp);
+		}
+	}
+
+	private buildPreparedClipCacheKey({
+		clip,
+	}: {
+		clip: AudioClipSource;
+	}): string {
+		return JSON.stringify({
+			id: clip.id,
+			sourceKey: clip.sourceKey,
+			startTime: clip.startTime,
+			duration: clip.duration,
+			trimStart: clip.trimStart,
+			trimEnd: clip.trimEnd,
+			retime: clip.retime ?? null,
+		});
+	}
+
+	private async getPreparedClipBuffer({
+		clip,
+	}: {
+		clip: AudioClipSource;
+	}): Promise<AudioBuffer | null> {
+		const cacheKey = this.buildPreparedClipCacheKey({ clip });
+		const existing = this.preparedClipBuffers.get(cacheKey);
+		if (existing) {
+			return existing;
+		}
+
+		const promise = (async () => {
+			const audioContext = this.ensureAudioContext();
+			if (!audioContext) {
+				return null;
+			}
+
+			const decodedBuffer = await this.getDecodedBuffer({ clip });
+			if (!decodedBuffer) {
+				return null;
+			}
+
+			return await renderRetimedBuffer({
+				audioContext,
+				sourceBuffer: decodedBuffer,
+				trimStart: clip.trimStart,
+				clipDuration: clip.duration,
+				retime: clip.retime,
+				maintainPitch: clip.retime?.maintainPitch === true,
+			});
+		})();
+
+		this.preparedClipBuffers.set(cacheKey, promise);
+		return promise;
+	}
+
+	private async getDecodedBuffer({
+		clip,
+	}: {
+		clip: AudioClipSource;
+	}): Promise<AudioBuffer | null> {
+		const existing = this.decodedBuffers.get(clip.sourceKey);
+		if (existing) {
+			return existing;
+		}
+
+		const promise = this.decodeClipBuffer({ clip });
+		this.decodedBuffers.set(clip.sourceKey, promise);
+		return promise;
+	}
+
+	private async decodeClipBuffer({
+		clip,
+	}: {
+		clip: AudioClipSource;
+	}): Promise<AudioBuffer | null> {
+		const audioContext = this.ensureAudioContext();
+		if (!audioContext) {
+			return null;
+		}
+
+		const input = new Input({
+			source: new BlobSource(clip.file),
+			formats: ALL_FORMATS,
+		});
+
+		try {
+			const audioTrack = await input.getPrimaryAudioTrack();
+			if (!audioTrack) {
+				return null;
+			}
+
+			const sink = new AudioBufferSink(audioTrack);
+			const chunks: AudioBuffer[] = [];
+			let totalSamples = 0;
+
+			for await (const { buffer } of sink.buffers(0)) {
+				chunks.push(buffer);
+				totalSamples += buffer.length;
+			}
+
+			if (chunks.length === 0) {
+				return null;
+			}
+
+			const targetSampleRate = audioContext.sampleRate;
+			const nativeSampleRate = chunks[0].sampleRate;
+			const numChannels = Math.min(2, chunks[0].numberOfChannels);
+			const nativeChannels = Array.from(
+				{ length: numChannels },
+				() => new Float32Array(totalSamples),
+			);
+
+			let offset = 0;
+			for (const chunk of chunks) {
+				for (let channel = 0; channel < numChannels; channel++) {
+					nativeChannels[channel].set(
+						chunk.getChannelData(Math.min(channel, chunk.numberOfChannels - 1)),
+						offset,
+					);
+				}
+				offset += chunk.length;
+			}
+
+			const outputSamples = Math.ceil(
+				totalSamples * (targetSampleRate / nativeSampleRate),
+			);
+			const offlineContext = new OfflineAudioContext(
+				numChannels,
+				outputSamples,
+				targetSampleRate,
+			);
+			const nativeBuffer = audioContext.createBuffer(
+				numChannels,
+				totalSamples,
+				nativeSampleRate,
+			);
+
+			for (let channel = 0; channel < numChannels; channel++) {
+				nativeBuffer.copyToChannel(nativeChannels[channel], channel);
+			}
+
+			const sourceNode = offlineContext.createBufferSource();
+			sourceNode.buffer = nativeBuffer;
+			sourceNode.connect(offlineContext.destination);
+			sourceNode.start(0);
+
+			return await offlineContext.startRendering();
+		} catch (error) {
+			console.warn("Failed to decode clip audio:", error);
+			return null;
+		} finally {
+			input.dispose();
+		}
+	}
+
+	private async getAudioSink({
+		clip,
+	}: {
+		clip: AudioClipSource;
+	}): Promise<AudioBufferSink | null> {
+		const existingSink = this.sinks.get(clip.sourceKey);
+		if (existingSink) return existingSink;
+
+		try {
+			const input = new Input({
+				source: new BlobSource(clip.file),
+				formats: ALL_FORMATS,
+			});
+			const audioTrack = await input.getPrimaryAudioTrack();
+			if (!audioTrack) {
+				input.dispose();
+				return null;
+			}
+
+			const sink = new AudioBufferSink(audioTrack);
+			this.inputs.set(clip.sourceKey, input);
+			this.sinks.set(clip.sourceKey, sink);
+			return sink;
+		} catch (error) {
+			console.warn("Failed to initialize audio sink:", error);
+			return null;
+		}
+	}
+}

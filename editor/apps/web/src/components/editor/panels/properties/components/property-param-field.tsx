@@ -1,0 +1,275 @@
+"use client";
+
+import { useRef } from "react";
+import type { ParamDefinition, NumberParamDefinition } from "@/lib/params";
+import {
+	formatNumberForDisplay,
+	getFractionDigitsForStep,
+	snapToStep,
+} from "@/utils/math";
+import { SectionField } from "@/components/section";
+import { Label } from "@/components/ui/label";
+import { NumberField } from "@/components/ui/number-field";
+import { Switch } from "@/components/ui/switch";
+import { ColorPicker } from "@/components/ui/color-picker";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { usePropertyDraft } from "../hooks/use-property-draft";
+import { KeyframeToggle } from "./keyframe-toggle";
+
+/**
+ * Hold-and-drag on a number param's title to scrub its value (Andy's ask:
+ * "hold down the title and drag left and right"). Same pointer-lock pattern
+ * as NumberField's icon scrub; sensitivity scales with the param's step so
+ * fine ranges (Zoom 1-4, step 0.05) scrub as comfortably as 0-100 ranges.
+ */
+function ScrubbableParamLabel({
+	param,
+	value,
+	onPreview,
+	onCommit,
+}: {
+	param: NumberParamDefinition;
+	value: number;
+	onPreview: (value: number) => void;
+	onCommit: () => void;
+}) {
+	const labelRef = useRef<HTMLSpanElement>(null);
+	const { min, max, step, displayMultiplier = 1 } = param;
+
+	const handlePointerDown = (event: React.PointerEvent) => {
+		if (event.button !== 0) return;
+		event.preventDefault();
+		const startDisplay = value * displayMultiplier;
+		let cumulativeDelta = 0;
+		let hasReceivedFirstMove = false;
+		labelRef.current?.requestPointerLock();
+
+		const handlePointerMove = (moveEvent: PointerEvent) => {
+			// first movementX after pointer lock often contains a bogus warp delta
+			if (!hasReceivedFirstMove) {
+				hasReceivedFirstMove = true;
+				return;
+			}
+			cumulativeDelta += moveEvent.movementX;
+			const rawDisplay = startDisplay + cumulativeDelta * step * 0.5;
+			const snapped = snapToStep({ value: rawDisplay, step });
+			const clamped = Math.max(
+				min,
+				max !== undefined ? Math.min(max, snapped) : snapped,
+			);
+			onPreview(clamped / displayMultiplier);
+		};
+
+		const handlePointerUp = () => {
+			document.removeEventListener("pointermove", handlePointerMove);
+			document.removeEventListener("pointerup", handlePointerUp);
+			document.exitPointerLock();
+			onCommit();
+		};
+
+		document.addEventListener("pointermove", handlePointerMove);
+		document.addEventListener("pointerup", handlePointerUp);
+	};
+
+	return (
+		<span
+			ref={labelRef}
+			className="cursor-ew-resize select-none"
+			title="Drag to adjust"
+			onPointerDown={handlePointerDown}
+		>
+			<Label className="pointer-events-none">{param.label}</Label>
+		</span>
+	);
+}
+
+export function PropertyParamField({
+	param,
+	value,
+	onPreview,
+	onCommit,
+	keyframe,
+}: {
+	param: ParamDefinition;
+	value: number | string | boolean;
+	onPreview: (value: number | string | boolean) => void;
+	onCommit: () => void;
+	keyframe?: {
+		isActive: boolean;
+		isDisabled: boolean;
+		onToggle: () => void;
+	};
+}) {
+	return (
+		<SectionField
+			label={param.label}
+			labelNode={
+				param.type === "number" ? (
+					<ScrubbableParamLabel
+						param={param}
+						value={typeof value === "number" ? value : Number(value)}
+						onPreview={onPreview}
+						onCommit={onCommit}
+					/>
+				) : undefined
+			}
+			beforeLabel={
+				keyframe ? (
+					<KeyframeToggle
+						isActive={keyframe.isActive}
+						isDisabled={keyframe.isDisabled}
+						title={`Toggle ${param.label.toLowerCase()} keyframe`}
+						onToggle={keyframe.onToggle}
+					/>
+				) : undefined
+			}
+		>
+			<ParamInput
+				param={param}
+				value={value}
+				onPreview={onPreview}
+				onCommit={onCommit}
+			/>
+		</SectionField>
+	);
+}
+
+function ParamInput({
+	param,
+	value,
+	onPreview,
+	onCommit,
+}: {
+	param: ParamDefinition;
+	value: number | string | boolean;
+	onPreview: (value: number | string | boolean) => void;
+	onCommit: () => void;
+}) {
+	if (param.type === "number") {
+		return (
+			<NumberParamField
+				param={param}
+				value={typeof value === "number" ? value : Number(value)}
+				onPreview={onPreview}
+				onCommit={onCommit}
+			/>
+		);
+	}
+
+	if (param.type === "boolean") {
+		return (
+			<Switch
+				checked={Boolean(value)}
+				onCheckedChange={(checked) => {
+					onPreview(checked);
+					onCommit();
+				}}
+			/>
+		);
+	}
+
+	if (param.type === "select") {
+		return (
+			<Select
+				value={String(value)}
+				onValueChange={(selected) => {
+					onPreview(selected);
+					onCommit();
+				}}
+			>
+				<SelectTrigger className="w-full">
+					<SelectValue />
+				</SelectTrigger>
+				<SelectContent>
+					{param.options.map((option) => (
+						<SelectItem key={option.value} value={option.value}>
+							{option.label}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
+		);
+	}
+
+	if (param.type === "color") {
+		return (
+			<ColorPicker
+				value={String(value).replace(/^#/, "").toUpperCase()}
+				onChange={(color) => onPreview(`#${color}`)}
+				onChangeEnd={(color) => {
+					onPreview(`#${color}`);
+					onCommit();
+				}}
+			/>
+		);
+	}
+
+	return null;
+}
+
+function NumberParamField({
+	param,
+	value,
+	onPreview,
+	onCommit,
+}: {
+	param: NumberParamDefinition;
+	value: number;
+	onPreview: (value: number) => void;
+	onCommit: () => void;
+}) {
+	const { min, max, step, displayMultiplier = 1 } = param;
+	const displayValue = value * displayMultiplier;
+	const clampDisplayValue = (nextDisplayValue: number) =>
+		Math.max(
+			min,
+			max !== undefined ? Math.min(max, nextDisplayValue) : nextDisplayValue,
+		);
+
+	const previewFromDisplay = (displayVal: number) => {
+		const clamped = clampDisplayValue(snapToStep({ value: displayVal, step }));
+		onPreview(clamped / displayMultiplier);
+	};
+
+	const maxFractionDigits = getFractionDigitsForStep({ step });
+
+	const draft = usePropertyDraft({
+		displayValue: formatNumberForDisplay({
+			value: displayValue,
+			maxFractionDigits,
+		}),
+		parse: (input) => {
+			const parsed = parseFloat(input);
+			if (Number.isNaN(parsed)) return null;
+			return clampDisplayValue(snapToStep({ value: parsed, step }));
+		},
+		onPreview: previewFromDisplay,
+		onCommit,
+	});
+
+	const handleReset = () => {
+		onPreview(param.default);
+		onCommit();
+	};
+
+	return (
+		<NumberField
+			icon={param.shortLabel}
+			value={draft.displayValue}
+			dragSensitivity="slow"
+			isDefault={value === param.default}
+			onFocus={draft.onFocus}
+			onChange={draft.onChange}
+			onBlur={draft.onBlur}
+			onScrub={previewFromDisplay}
+			onScrubEnd={onCommit}
+			onReset={handleReset}
+		/>
+	);
+}

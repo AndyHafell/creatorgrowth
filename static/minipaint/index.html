@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en-US">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta http-equiv="x-ua-compatible" content="IE=edge" />
+	<title>miniPaint - image editor</title>
+	<meta name="description" content="miniPaint is free online image editor using HTML5. Edit, adjust your images, add effects online in your browser, without installing anything..." />
+	<meta name="keywords" content="photo, image, picture, transparent, layers, free, edit, html5, canvas, javascript, online, photoshop, gimp, effects, sharpen, blur, magic eraser tool, clone tool, rotate, resize, photoshop online, online tools, tilt shift, sprites, keypoints" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=0" />
+	<link rel="icon" sizes="192x192" href="images/favicon.png">
+	<!-- <link rel="manifest" href="dist/manifest.json"> -->
+	<!-- Google -->
+	<meta itemprop="name" content="miniPaint" />
+	<meta itemprop="description" content="miniPaint is free online image editor using HTML5. Edit, adjust your images, add effects online in your browser, without installing anything..." />
+	<meta itemprop="image" content="https://viliusle.github.io/miniPaint/images/preview.jpg" />
+	<!-- Twitter -->
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content="miniPaint" />
+	<meta name="twitter:description" content="miniPaint is free online image editor using HTML5. Edit, adjust your images, add effects online in your browser, without installing anything..." />
+	<meta name="twitter:image" content="https://viliusle.github.io/miniPaint/images/preview.jpg" />
+	<meta name="twitter:image:alt" content="miniPaint is free online image editor using HTML5. Edit, adjust your images, add effects online in your browser, without installing anything..." />
+	<!-- Facebook, Pinterest -->
+	<meta property="og:title" content="miniPaint" />
+	<meta property="og:type" content="article" />
+	<meta property="og:url" content="https://viliusle.github.io/miniPaint/" />
+	<meta property="og:image" content="https://viliusle.github.io/miniPaint/images/preview.jpg" />
+	<meta property="og:description" content="miniPaint is free online image editor using HTML5. Edit, adjust your images, add effects online in your browser, without installing anything..." />
+	<meta property="og:site_name" content="miniPaint" />
+	
+	<script src="dist/bundle.js"></script>
+</head>
+<body>
+	<div class="wrapper">
+
+		<nav aria-label="Main Menu" class="main_menu" id="main_menu"></nav>
+		
+		<div class="submenu">
+			<a class="logo" href="#">miniPaint</a>
+			<div class="block attributes" id="action_attributes"></div>
+			<button class="undo_button" id="undo_button" type="button">
+				<span class="sr_only">Undo</span>
+			</button>
+		</div>
+		
+		<div class="sidebar_left" id="tools_container"></div>
+
+
+		<div class="middle_area" id="middle_area">
+
+			<canvas class="ruler_left" id="ruler_left"></canvas>
+			<canvas class="ruler_top" id="ruler_top"></canvas>
+
+			<div class="main_wrapper" id="main_wrapper">
+				<div class="canvas_wrapper" id="canvas_wrapper">
+					<div id="mouse"></div>
+					<div class="transparent-grid" id="canvas_minipaint_background"></div>
+					<canvas id="canvas_minipaint">
+						<div class="trn error">
+							Your browser does not support canvas or JavaScript is not enabled.
+						</div>
+					</canvas>
+				</div>
+			</div>
+		</div>
+
+		<div class="sidebar_right">
+			<div class="preview block">
+				<h2 class="trn toggle" data-target="toggle_preview">Preview</h2>
+				<div id="toggle_preview"></div>
+			</div>
+			
+			<div class="colors block">
+				<h2 class="trn toggle" data-target="toggle_colors">Colors</h2>
+				<div class="content" id="toggle_colors"></div>
+			</div>
+			
+			<div class="block" id="info_base">
+				<h2 class="trn toggle toggle-full" data-target="toggle_info">Information</h2>
+				<div class="content" id="toggle_info"></div>
+			</div>
+			
+			<div class="details block" id="details_base">
+				<h2 class="trn toggle toggle-full" data-target="toggle_details">Layer details</h2>
+				<div class="content details-content" id="toggle_details"></div>
+			</div>
+			
+			<div class="layers block">
+				<h2 class="trn">Layers</h2>
+				<div class="content" id="layers_base"></div>
+			</div>
+		</div>
+	</div>
+	<div class="mobile_menu">
+		<button class="left_mobile_menu" id="left_mobile_menu_button" type="button">
+			<span class="sr_only">Toggle Menu</span>
+		</button>
+		<button class="right_mobile_menu" id="mobile_menu_button" type="button">
+			<span class="sr_only">Toggle Menu</span>
+		</button>
+	</div>
+	<div class="hidden" id="tmp"></div>
+	<div id="popups"></div>
+
+<script>
+// ---- Right-click inpaint (Remove / Generative fill) via Flux Fill Pro ----
+(function(){
+  function boot() {
+    var canvas = document.getElementById('canvas_minipaint');
+    if (!canvas || !window.Layers || typeof window.Layers.insert !== 'function') {
+      return setTimeout(boot, 100);
+    }
+
+    // Try every known path miniPaint may expose its selection rect from.
+    // Returns {x,y,w,h, _via} on hit, or {_diag: [...]} on miss for debugging.
+    function probeSelection() {
+      var diag = [];
+      function asRect(d, via) {
+        if (!d) return null;
+        diag.push(via + ' → ' + JSON.stringify({x:d.x, y:d.y, w:d.width, h:d.height, status:d.status, type:d.type}));
+        if (d.x == null || d.y == null || !d.width || !d.height) return null;
+        var w = Math.round(d.width), h = Math.round(d.height);
+        if (w < 4 || h < 4) return null;
+        return { x: Math.round(d.x), y: Math.round(d.y), w: w, h: h, _via: via };
+      }
+
+      // Visit every object reachable from a small set of roots, looking for
+      // anything that has a Base_selection with get_selection / find_settings.
+      // BFS, depth-limited, dedup by identity. Catches whichever path miniPaint
+      // happens to use in this bundle.
+      function visit() {
+        var seen = new WeakSet();
+        var roots = [
+          ['AppConfig', window.AppConfig],
+          ['State', window.State],
+          ['Layers', window.Layers],
+          ['POP', window.POP],
+          ['Clipboard', window.Clipboard],
+        ];
+        var queue = roots.slice();
+        var hits = [];
+        var max = 4000;
+        while (queue.length && max-- > 0) {
+          var item = queue.shift();
+          var path = item[0], val = item[1];
+          if (!val || typeof val !== 'object') continue;
+          if (seen.has(val)) continue;
+          seen.add(val);
+          // Test for selection
+          var bs = val.Base_selection;
+          if (bs && typeof bs === 'object') {
+            hits.push({ path: path + '.Base_selection', bs: bs });
+          }
+          // Enqueue children (own enumerable + a few well-known props)
+          var keys;
+          try { keys = Object.keys(val); } catch (e) { keys = []; }
+          for (var i = 0; i < keys.length && i < 80; i++) {
+            var k = keys[i];
+            if (k[0] === '_') continue;
+            var v;
+            try { v = val[k]; } catch (e) { continue; }
+            if (v && typeof v === 'object' && !seen.has(v)) {
+              queue.push([path + '.' + k, v]);
+            }
+          }
+        }
+        return hits;
+      }
+
+      try {
+        diag.push('AppConfig keys: ' + (window.AppConfig ? Object.keys(window.AppConfig).join(',') : 'NONE'));
+        diag.push('State keys: ' + (window.State ? Object.keys(window.State).join(',') : 'NONE'));
+        var hits = visit();
+        diag.push('Base_selection hits: ' + hits.length);
+        for (var i = 0; i < hits.length; i++) {
+          var h = hits[i];
+          diag.push('  @' + h.path);
+          var bs = h.bs;
+          if (typeof bs.get_selection === 'function') {
+            try {
+              var r = asRect(bs.get_selection(), h.path + '.get_selection');
+              if (r) return r;
+            } catch (e) { diag.push('    get_selection threw: ' + e.message); }
+          }
+          if (typeof bs.find_settings === 'function') {
+            try {
+              var fs = bs.find_settings();
+              var r2 = asRect(fs && fs.data, h.path + '.find_settings.data');
+              if (r2) return r2;
+            } catch (e) { diag.push('    find_settings threw: ' + e.message); }
+          }
+        }
+      } catch (e) { diag.push('outer threw: ' + e.message); }
+      return { _diag: diag };
+    }
+    function getLiveRect() {
+      var p = probeSelection();
+      return p && p.x != null ? p : null;
+    }
+    // Expose for DevTools: document.getElementById('mp').contentWindow.__miniPaintProbe()
+    window.__miniPaintProbe = probeSelection;
+    window.__miniPaintGetRect = getLiveRect;
+
+    // miniPaint binds pointerdown on document and preventDefaults right-clicks,
+    // which kills the browser's contextmenu event. Block right-button events from
+    // reaching miniPaint so the browser fires contextmenu normally.
+    function swallowRightBtn(e) {
+      if (e.button === 2) {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+      }
+    }
+    canvas.addEventListener('pointerdown', swallowRightBtn, true);
+    canvas.addEventListener('mousedown',   swallowRightBtn, true);
+    canvas.addEventListener('pointerup',   swallowRightBtn, true);
+    canvas.addEventListener('mouseup',     swallowRightBtn, true);
+
+    // Capture-phase contextmenu so we win against any document-level handler
+    canvas.addEventListener('contextmenu', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      showMenu(e.clientX, e.clientY);
+    }, true);
+    document.addEventListener('contextmenu', function(e){
+      if (e.target === canvas || canvas.contains(e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
+
+    var menu = null;
+    function killMenu(){ if (menu){ menu.remove(); menu = null; } }
+    function showMenu(x, y) {
+      killMenu();
+      var rect = getLiveRect();
+      menu = document.createElement('div');
+      menu.style.cssText = 'position:fixed;left:'+x+'px;top:'+y+'px;background:#1a1a2a;border:1px solid #2a2a4a;border-radius:8px;padding:6px 0;min-width:240px;z-index:99999;font:13px -apple-system,BlinkMacSystemFont,sans-serif;color:#ddd;box-shadow:0 8px 24px rgba(0,0,0,0.5);user-select:none;';
+      var header = document.createElement('div');
+      header.style.cssText = 'padding:4px 14px 6px;font-size:11px;letter-spacing:1px;color:#666;border-bottom:1px solid #2a2a4a;margin-bottom:4px;';
+      header.textContent = rect ? ('SELECTION  ' + rect.w + '×' + rect.h) : 'NO SELECTION';
+      menu.appendChild(header);
+      var items = [
+        ['Remove (content-aware)', function(){ runFill('', rect); }],
+        ['Generative fill…', function(){
+          var p = window.prompt('What do you want to generate?', '');
+          if (p && p.trim()) runFill(p.trim(), rect);
+        }],
+      ];
+      items.forEach(function(item){
+        var b = document.createElement('div');
+        b.textContent = item[0];
+        var disabled = !rect;
+        b.style.cssText = 'padding:8px 14px;cursor:'+(disabled?'not-allowed':'pointer')+';opacity:'+(disabled?'0.4':'1')+';';
+        if (!disabled) {
+          b.onmouseenter = function(){ b.style.background = '#2a2a4a'; };
+          b.onmouseleave = function(){ b.style.background = ''; };
+          b.onclick = function(){ killMenu(); item[1](); };
+        }
+        menu.appendChild(b);
+      });
+      document.body.appendChild(menu);
+      setTimeout(function(){ document.addEventListener('mousedown', dismiss, true); }, 0);
+    }
+    function dismiss(e){
+      if (menu && !menu.contains(e.target)) {
+        document.removeEventListener('mousedown', dismiss, true);
+        killMenu();
+      }
+    }
+
+    // ---- Top-bar AI buttons (in the empty submenu space, left of the undo button) ----
+    var submenu = document.querySelector('.submenu');
+    if (submenu) {
+      var actions = document.createElement('div');
+      actions.id = 'ai_fill_actions';
+      actions.style.cssText = 'display:flex;gap:8px;margin-left:18px;align-items:center;';
+
+      function mkBtn(label, accent, onClick) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = label;
+        var base;
+        if (accent === 'green')      base = 'background:#7ad17a;border:1px solid #7ad17a;color:#000;';
+        else if (accent === 'cyan')  base = 'background:#5ab9d6;border:1px solid #5ab9d6;color:#000;';
+        else if (accent === true)    base = 'background:#e8a800;border:1px solid #e8a800;color:#000;';
+        else                          base = 'background:#2a2a4a;border:1px solid #3a3a5a;color:#ddd;';
+        b.style.cssText = base + 'padding:6px 14px;border-radius:6px;font-size:11px;letter-spacing:1px;font-weight:700;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,sans-serif;';
+        b.onmouseenter = function(){ b.style.filter = 'brightness(1.15)'; };
+        b.onmouseleave = function(){ b.style.filter = ''; };
+        b.onclick = onClick;
+        return b;
+      }
+
+      function withRect(handler) {
+        return function() {
+          var rect = getLiveRect();
+          if (!rect) {
+            var p = probeSelection();
+            var msg = 'No selection detected. Diag: ' + ((p && p._diag) ? p._diag.join(' | ') : 'unknown');
+            console.log('[miniPaint-AI] probe:', p);
+            return setStatus(msg, '#f5b942', false);
+          }
+          handler(rect);
+        };
+      }
+
+      // Always-visible BG remove button + model picker (independent of selection tool)
+      var bgActions = document.createElement('div');
+      bgActions.id = 'ai_bg_actions';
+      bgActions.style.cssText = 'display:flex;align-items:center;margin-left:18px;gap:1px;';
+      var BG_MODELS = [
+        { key: 'bria',          label: 'RMBG (Bria) — premium' },
+        { key: 'birefnet',      label: 'BiRefNet (851-labs)' },
+        { key: 'rembg-enhance', label: 'rembg-enhance' },
+      ];
+      var bgModel = localStorage.getItem('mp_bg_model') || 'bria';
+      var bgBtn = mkBtn('REMOVE BG', 'cyan', function(){ runRemoveBg(bgModel); });
+      bgBtn.style.whiteSpace = 'nowrap';
+      bgBtn.style.borderTopRightRadius = '0';
+      bgBtn.style.borderBottomRightRadius = '0';
+      bgBtn.title = 'Remove background (' + bgModel + ')';
+
+      var chevBtn = mkBtn('▾', 'cyan', function(e){
+        e.stopPropagation();
+        openModelMenu();
+      });
+      chevBtn.style.borderTopLeftRadius = '0';
+      chevBtn.style.borderBottomLeftRadius = '0';
+      chevBtn.style.padding = '6px 8px';
+      chevBtn.title = 'Choose bg-remover model';
+
+      bgActions.appendChild(bgBtn);
+      bgActions.appendChild(chevBtn);
+
+      var modelMenu = null;
+      function killModelMenu(){ if (modelMenu){ modelMenu.remove(); modelMenu = null; } }
+      function openModelMenu() {
+        killModelMenu();
+        var rect = chevBtn.getBoundingClientRect();
+        modelMenu = document.createElement('div');
+        modelMenu.style.cssText = 'position:fixed;left:'+rect.left+'px;top:'+(rect.bottom+4)+'px;background:#1a1a2a;border:1px solid #2a2a4a;border-radius:8px;padding:6px 0;min-width:240px;z-index:99999;font:13px -apple-system,BlinkMacSystemFont,sans-serif;color:#ddd;box-shadow:0 8px 24px rgba(0,0,0,0.5);user-select:none;';
+        BG_MODELS.forEach(function(m){
+          var row = document.createElement('div');
+          row.style.cssText = 'padding:8px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;';
+          row.innerHTML = '<span style="width:14px;color:#5ab9d6;">' + (m.key === bgModel ? '●' : '') + '</span>' + m.label;
+          row.onmouseenter = function(){ row.style.background = '#2a2a4a'; };
+          row.onmouseleave = function(){ row.style.background = ''; };
+          row.onclick = function(){
+            bgModel = m.key;
+            localStorage.setItem('mp_bg_model', bgModel);
+            bgBtn.title = 'Remove background (' + bgModel + ')';
+            killModelMenu();
+            runRemoveBg(bgModel);
+          };
+          modelMenu.appendChild(row);
+        });
+        document.body.appendChild(modelMenu);
+        setTimeout(function(){ document.addEventListener('mousedown', dismissModelMenu, true); }, 0);
+      }
+      function dismissModelMenu(e){
+        if (modelMenu && !modelMenu.contains(e.target)) {
+          document.removeEventListener('mousedown', dismissModelMenu, true);
+          killModelMenu();
+        }
+      }
+
+      var patchBtn = mkBtn('PATCH', 'green', withRect(function(rect){ runPatch(rect); }));
+      var fillBtn  = mkBtn('FILL…', true,    withRect(function(rect){
+        var p = window.prompt('What do you want to generate?', '');
+        if (p && p.trim()) runFill(p.trim(), rect);
+      }));
+      actions.appendChild(patchBtn);
+      actions.appendChild(fillBtn);
+
+      // Place buttons right after the miniPaint logo (left side of the submenu).
+      // Order: [logo] [NO BG] [PATCH FILL (if selection)] [...]
+      var attrBlock = submenu.querySelector('#action_attributes');
+      if (attrBlock) {
+        submenu.insertBefore(bgActions, attrBlock);
+        submenu.insertBefore(actions, attrBlock);
+      } else {
+        var logo = submenu.querySelector('.logo');
+        var anchor = logo && logo.nextSibling;
+        if (anchor) {
+          submenu.insertBefore(bgActions, anchor);
+          submenu.insertBefore(actions, anchor);
+        } else {
+          submenu.appendChild(bgActions);
+          submenu.appendChild(actions);
+        }
+      }
+
+      // Show buttons only when the rectangle-selection tool is active.
+      // miniPaint adds the tool name as a CSS class on the active toolbar item:
+      //   <a class="item trn active selection">…</a>
+      function getActiveToolName() {
+        var el = document.querySelector('#tools_container .item.active');
+        if (!el) return null;
+        for (var i = 0; i < el.classList.length; i++) {
+          var c = el.classList[i];
+          if (c !== 'item' && c !== 'trn' && c !== 'active') return c;
+        }
+        return null;
+      }
+      function isSelectionToolActive() {
+        return getActiveToolName() === 'selection';
+      }
+      function syncVisibility() {
+        actions.style.display = isSelectionToolActive() ? 'flex' : 'none';
+      }
+      syncVisibility();
+      setInterval(syncVisibility, 200);
+
+      // Keyboard shortcuts: P = PATCH, F = FILL. Only when selection tool is active.
+      function isTypingTarget(t) {
+        if (!t) return false;
+        var tag = (t.tagName || '').toUpperCase();
+        return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t.isContentEditable;
+      }
+      document.addEventListener('keydown', function(e){
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (isTypingTarget(e.target)) return;
+        if (!isSelectionToolActive()) return;
+        // Don't fire while the patch modal is open (it has its own Enter/Escape)
+        if (document.querySelector('[data-ai-fill-modal]')) return;
+        var k = (e.key || '').toLowerCase();
+        if (k === 'p') {
+          e.preventDefault();
+          e.stopPropagation();
+          patchBtn.click();
+        } else if (k === 'f') {
+          e.preventDefault();
+          e.stopPropagation();
+          fillBtn.click();
+        }
+      }, true);
+    }
+
+    var statusEl = document.createElement('div');
+    statusEl.style.cssText = 'position:fixed;left:50%;top:64px;transform:translateX(-50%);background:#1a1a2a;border:1px solid #2a2a4a;color:#ddd;padding:10px 18px;border-radius:8px;font:13px -apple-system,BlinkMacSystemFont,sans-serif;z-index:99998;display:none;box-shadow:0 4px 16px rgba(0,0,0,0.4);';
+    document.body.appendChild(statusEl);
+    function setStatus(msg, color, autohide) {
+      statusEl.textContent = msg;
+      statusEl.style.color = color || '#ddd';
+      statusEl.style.display = 'block';
+      statusEl.style.maxWidth = '70vw';
+      statusEl.style.whiteSpace = 'normal';
+      statusEl.style.fontSize = '12px';
+      statusEl.onclick = function(){ statusEl.style.display = 'none'; };
+      statusEl.style.cursor = 'pointer';
+      if (autohide) setTimeout(function(){ if (statusEl) statusEl.style.display = 'none'; }, 3500);
+    }
+
+    // Compute a patch canvas (full-dim, transparent except inside the rect).
+    // opts: {depth, dither, feather}
+    function computePatch(srcData, dim, r, opts) {
+      function px(x, y) {
+        x = x < 0 ? 0 : (x >= dim.width ? dim.width - 1 : x);
+        y = y < 0 ? 0 : (y >= dim.height ? dim.height - 1 : y);
+        var i = (y * dim.width + x) * 4;
+        return [srcData[i], srcData[i+1], srcData[i+2]];
+      }
+      function sampleEdge(x, y, dx, dy) {
+        var R=0, G=0, B=0, n=0;
+        for (var k = 1; k <= opts.depth; k++) {
+          var p = px(x + dx*k, y + dy*k);
+          R += p[0]; G += p[1]; B += p[2]; n++;
+        }
+        return [R/n, G/n, B/n];
+      }
+
+      var out = document.createElement('canvas');
+      out.width = dim.width; out.height = dim.height;
+      var octx = out.getContext('2d');
+      var outImg = octx.createImageData(dim.width, dim.height);
+      var od = outImg.data;
+
+      var rx = r.x, ry = r.y, rw = r.w, rh = r.h;
+      var feather = opts.feather | 0;
+      var dither = opts.dither | 0;
+
+      for (var y = 0; y < rh; y++) {
+        var fy = y / (rh - 1 || 1);
+        for (var x = 0; x < rw; x++) {
+          var fx = x / (rw - 1 || 1);
+          var t  = sampleEdge(rx + x, ry,           0, -1);
+          var b  = sampleEdge(rx + x, ry + rh - 1,  0,  1);
+          var l  = sampleEdge(rx,         ry + y,  -1,  0);
+          var rr = sampleEdge(rx + rw - 1, ry + y,  1,  0);
+          var R = (t[0]*(1-fy) + b[0]*fy + l[0]*(1-fx) + rr[0]*fx) * 0.5;
+          var G = (t[1]*(1-fy) + b[1]*fy + l[1]*(1-fx) + rr[1]*fx) * 0.5;
+          var B = (t[2]*(1-fy) + b[2]*fy + l[2]*(1-fx) + rr[2]*fx) * 0.5;
+          if (dither) {
+            var nz = (Math.random() - 0.5) * dither * 2;
+            R += nz; G += nz; B += nz;
+          }
+          var alpha = 255;
+          if (feather > 0) {
+            var de = Math.min(x, y, rw - 1 - x, rh - 1 - y);
+            if (de < feather) alpha = Math.round(255 * de / feather);
+          }
+          var di = ((ry + y) * dim.width + (rx + x)) * 4;
+          od[di]   = R < 0 ? 0 : (R > 255 ? 255 : R);
+          od[di+1] = G < 0 ? 0 : (G > 255 ? 255 : G);
+          od[di+2] = B < 0 ? 0 : (B > 255 ? 255 : B);
+          od[di+3] = alpha;
+        }
+      }
+      octx.putImageData(outImg, 0, 0);
+      return out;
+    }
+
+    function applyPatch(patchCanvas, r, opts) {
+      patchCanvas.toBlob(function(blob){
+        var img = new Image();
+        img.onload = function(){
+          try {
+            window.Layers.insert({
+              name: 'patch',
+              type: 'image',
+              data: img,
+              width: img.naturalWidth, height: img.naturalHeight,
+              width_original: img.naturalWidth, height_original: img.naturalHeight,
+            });
+            setStatus('Patched — added as new layer', '#7ad17a', true);
+          } catch (e) {
+            setStatus('Layer insert failed: ' + e.message, '#e07070', true);
+          }
+        };
+        img.src = URL.createObjectURL(blob);
+      }, 'image/png');
+    }
+
+    // Open the patch preview modal with live sliders.
+    function runPatch(r) {
+      var dim;
+      try { dim = window.Layers.get_dimensions(); }
+      catch (e) { return setStatus('Layers unavailable', '#e07070', true); }
+
+      var src = document.createElement('canvas');
+      src.width = dim.width; src.height = dim.height;
+      var sctx = src.getContext('2d');
+      window.Layers.convert_layers_to_canvas(sctx);
+      var srcData = sctx.getImageData(0, 0, dim.width, dim.height).data;
+
+      var opts = { depth: 3, dither: 4, feather: 0 };
+      var lastPatch = null;
+
+      var overlay = document.createElement('div');
+      overlay.setAttribute('data-ai-fill-modal', '1');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:100000;display:flex;align-items:center;justify-content:center;font:13px -apple-system,BlinkMacSystemFont,sans-serif;';
+
+      var box = document.createElement('div');
+      box.style.cssText = 'background:#0d0d1a;border:1px solid #2a2a4a;border-radius:12px;padding:18px 20px;max-width:92vw;max-height:92vh;display:flex;flex-direction:column;gap:12px;color:#ddd;box-shadow:0 24px 48px rgba(0,0,0,0.5);';
+      box.onclick = function(e){ e.stopPropagation(); };
+      overlay.onclick = function(){ close(); };
+
+      var title = document.createElement('div');
+      title.textContent = 'PATCH PREVIEW';
+      title.style.cssText = 'font-weight:700;letter-spacing:2px;color:#7ad17a;font-size:11px;';
+      box.appendChild(title);
+
+      var maxW = Math.min(900, window.innerWidth * 0.8);
+      var maxH = Math.min(560, window.innerHeight * 0.6);
+      var scale = Math.min(maxW / dim.width, maxH / dim.height, 1);
+      var pw = Math.round(dim.width * scale);
+      var ph = Math.round(dim.height * scale);
+      var previewCanvas = document.createElement('canvas');
+      previewCanvas.width = pw;
+      previewCanvas.height = ph;
+      previewCanvas.style.cssText = 'border:1px solid #2a2a4a;border-radius:6px;background:#000;display:block;';
+      box.appendChild(previewCanvas);
+
+      function row(label, key, min, max, init) {
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'display:flex;align-items:center;gap:12px;';
+        var lbl = document.createElement('div');
+        lbl.textContent = label;
+        lbl.style.cssText = 'width:130px;color:#aaa;font-size:12px;';
+        var inp = document.createElement('input');
+        inp.type = 'range'; inp.min = min; inp.max = max; inp.value = init;
+        inp.style.cssText = 'flex:1;accent-color:#7ad17a;';
+        var val = document.createElement('div');
+        val.textContent = init;
+        val.style.cssText = 'width:36px;text-align:right;color:#7ad17a;font-variant-numeric:tabular-nums;';
+        inp.oninput = function(){
+          opts[key] = parseInt(inp.value, 10);
+          val.textContent = inp.value;
+          schedule();
+        };
+        wrap.appendChild(lbl);
+        wrap.appendChild(inp);
+        wrap.appendChild(val);
+        box.appendChild(wrap);
+      }
+      row('Sample depth', 'depth', 1, 12, opts.depth);
+      row('Dither',       'dither', 0, 16, opts.dither);
+      row('Feather edge', 'feather', 0, 32, opts.feather);
+
+      var btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;margin-top:6px;';
+      var done = false;
+      function applyOnce() {
+        if (done) return;
+        done = true;
+        if (lastPatch) applyPatch(lastPatch, r, opts);
+        close();
+      }
+      var cancelBtn = mkBtn('CANCEL', false, function(){ close(); });
+      var applyBtn = mkBtn('APPLY PATCH', 'green', applyOnce);
+      btnRow.appendChild(cancelBtn);
+      btnRow.appendChild(applyBtn);
+      box.appendChild(btnRow);
+
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+
+      var renderTimer = null;
+      function schedule(){ clearTimeout(renderTimer); renderTimer = setTimeout(render, 60); }
+      function render(){
+        lastPatch = computePatch(srcData, dim, r, opts);
+        var pctx = previewCanvas.getContext('2d');
+        pctx.imageSmoothingEnabled = true;
+        pctx.imageSmoothingQuality = 'high';
+        pctx.clearRect(0, 0, pw, ph);
+        pctx.drawImage(src, 0, 0, pw, ph);
+        pctx.drawImage(lastPatch, 0, 0, pw, ph);
+        pctx.strokeStyle = '#7ad17a';
+        pctx.lineWidth = 1;
+        pctx.setLineDash([4, 3]);
+        pctx.strokeRect(r.x * scale + 0.5, r.y * scale + 0.5, r.w * scale, r.h * scale);
+        pctx.setLineDash([]);
+      }
+      render();
+
+      function onKey(e){
+        if (e.key === 'Escape') { e.stopPropagation(); close(); }
+        else if (e.key === 'Enter') { e.stopPropagation(); applyOnce(); }
+      }
+      document.addEventListener('keydown', onKey, true);
+      function close(){
+        document.removeEventListener('keydown', onKey, true);
+        overlay.remove();
+      }
+    }
+
+    // Remove background from the flattened canvas via BiRefNet (851-labs on Replicate).
+    // Result is added as a new layer "no_bg" on top of existing layers.
+    function runRemoveBg(model) {
+      setStatus('Removing background (' + (model || 'bria') + ')…', '#f5b942', false);
+      var dim;
+      try { dim = window.Layers.get_dimensions(); }
+      catch (e) { return setStatus('Layers unavailable', '#e07070', true); }
+
+      var src = document.createElement('canvas');
+      src.width = dim.width; src.height = dim.height;
+      window.Layers.convert_layers_to_canvas(src.getContext('2d'));
+
+      src.toBlob(function(blob){
+        if (!blob) return setStatus('Export failed', '#e07070', true);
+        var fd = new FormData();
+        fd.append('image', blob, 'image.png');
+        fd.append('model', model || 'bria');
+        fetch('/api/thumb-edit/remove-bg', { method: 'POST', body: fd })
+          .then(function(resp){
+            if (!resp.ok) {
+              return resp.json().then(function(j){ throw new Error(j.error || ('HTTP '+resp.status)); },
+                                      function(){ throw new Error('HTTP '+resp.status); });
+            }
+            return resp.blob();
+          })
+          .then(function(blob){
+            var img = new Image();
+            img.onload = function(){
+              try {
+                window.Layers.insert({
+                  name: 'no_bg (' + (model || 'bria') + ')',
+                  type: 'image',
+                  data: img,
+                  width: img.naturalWidth, height: img.naturalHeight,
+                  width_original: img.naturalWidth, height_original: img.naturalHeight,
+                });
+                setStatus('Background removed via ' + (model || 'bria'), '#7ad17a', true);
+              } catch (e) {
+                setStatus('Layer insert failed: ' + e.message, '#e07070', true);
+              }
+            };
+            img.onerror = function(){ setStatus('Decode failed', '#e07070', true); };
+            img.src = URL.createObjectURL(blob);
+          })
+          .catch(function(err){ setStatus('Failed: ' + err.message, '#e07070', true); });
+      }, 'image/png');
+    }
+
+    function runFill(promptText, r) {
+      if (!r) return;
+      setStatus(promptText ? 'Generating fill…' : 'Removing…', '#f5b942', false);
+
+      var dim;
+      try { dim = window.Layers.get_dimensions(); }
+      catch (e) { return setStatus('Layers unavailable', '#e07070', true); }
+
+      var imgCanvas = document.createElement('canvas');
+      imgCanvas.width = dim.width; imgCanvas.height = dim.height;
+      window.Layers.convert_layers_to_canvas(imgCanvas.getContext('2d'));
+
+      var maskCanvas = document.createElement('canvas');
+      maskCanvas.width = dim.width; maskCanvas.height = dim.height;
+      var mctx = maskCanvas.getContext('2d');
+      mctx.fillStyle = '#000'; mctx.fillRect(0, 0, dim.width, dim.height);
+      mctx.fillStyle = '#fff'; mctx.fillRect(r.x, r.y, r.w, r.h);
+
+      Promise.all([
+        new Promise(function(res){ imgCanvas.toBlob(res, 'image/png'); }),
+        new Promise(function(res){ maskCanvas.toBlob(res, 'image/png'); })
+      ]).then(function(blobs){
+        var fd = new FormData();
+        fd.append('image', blobs[0], 'image.png');
+        fd.append('mask',  blobs[1], 'mask.png');
+        fd.append('prompt', promptText);
+        return fetch('/api/thumb-edit/inpaint', { method: 'POST', body: fd });
+      }).then(function(resp){
+        if (!resp.ok) {
+          return resp.json().then(function(j){ throw new Error(j.error || ('HTTP '+resp.status)); },
+                                  function(){ throw new Error('HTTP '+resp.status); });
+        }
+        return resp.blob();
+      }).then(function(blob){
+        var img = new Image();
+        img.onload = function(){
+          try {
+            window.Layers.insert({
+              name: promptText ? ('fill: ' + promptText.slice(0, 24)) : 'remove',
+              type: 'image',
+              data: img,
+              width: img.naturalWidth, height: img.naturalHeight,
+              width_original: img.naturalWidth, height_original: img.naturalHeight,
+            });
+            setStatus('Done — added as new layer', '#7ad17a', true);
+          } catch (e) {
+            setStatus('Layer insert failed: ' + e.message, '#e07070', true);
+          }
+        };
+        img.onerror = function(){ setStatus('Decode failed', '#e07070', true); };
+        img.src = URL.createObjectURL(blob);
+      }).catch(function(err){
+        setStatus('Failed: ' + err.message, '#e07070', true);
+      });
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

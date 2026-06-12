@@ -1,0 +1,176 @@
+<!doctype html>
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"text","type":"string","label":"Text","default":"hello what is going on"},
+    {"id":"fontSize","type":"number","label":"Font size (px)","default":180},
+    {"id":"stagger","type":"number","label":"Word stagger (s)","default":0.14},
+    {"id":"entryDuration","type":"number","label":"Entry duration (s)","default":0.7},
+    {"id":"accentColor","type":"color","label":"Accent color","default":"#ff5b3a"}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #f3efe8;
+        font-family: "Montserrat", "Inter", sans-serif;
+      }
+      #stage {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 140px 160px;
+        gap: 18px;
+        position: relative;
+      }
+      #ornament {
+        width: 220px;
+        height: 14px;
+        background: var(--accent, #ff5b3a);
+        border-radius: 4px;
+        margin-bottom: 8px;
+        transform-origin: left center;
+      }
+      .word-row {
+        display: block;
+        overflow: hidden;
+        line-height: 1.02;
+        max-width: 1620px;
+      }
+      .word {
+        display: inline-block;
+        font-weight: 900;
+        font-style: italic;
+        color: #18141a;
+        letter-spacing: -0.025em;
+        will-change: transform;
+        padding-right: 0.18em;
+      }
+      .word.accent {
+        color: var(--accent, #ff5b3a);
+      }
+      #subline {
+        margin-top: 18px;
+        font-size: 30px;
+        letter-spacing: 0.22em;
+        font-weight: 700;
+        color: rgba(24, 20, 26, 0.45);
+        text-transform: uppercase;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="slide-bold"
+      data-start="0"
+      data-duration="10"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div id="stage">
+        <div id="ornament"></div>
+        <div id="text-block" data-layout-allow-overflow></div>
+        <div id="subline">Bold · Stacked · Confident</div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const vars = window.__hyperframes
+          ? window.__hyperframes.getVariables()
+          : {
+              text: "hello what is going on",
+              fontSize: 180,
+              stagger: 0.14,
+              entryDuration: 0.7,
+              accentColor: "#ff5b3a",
+            };
+
+        const accent = vars.accentColor || "#ff5b3a";
+        document.documentElement.style.setProperty("--accent", accent);
+
+        const block = document.getElementById("text-block");
+        const fontSize = vars.fontSize;
+        block.style.fontSize = fontSize + "px";
+
+        const words = String(vars.text || "")
+          .split(/\s+/)
+          .filter(Boolean);
+
+        // Last word is accent-colored so each preset shows a color anchor at t=0
+        const accentIdx = Math.max(0, words.length - 1);
+
+        // Group words into rows of max ~3 words to keep things stacked
+        const rowSize = 3;
+        const rows = [];
+        for (let i = 0; i < words.length; i += rowSize) {
+          rows.push(words.slice(i, i + rowSize));
+        }
+
+        const wordEls = [];
+        rows.forEach((rowWords, rowIdx) => {
+          const row = document.createElement("div");
+          row.className = "word-row";
+          rowWords.forEach((w, i) => {
+            const wordIdx = rowIdx * rowSize + i;
+            const el = document.createElement("span");
+            el.className = "word" + (wordIdx === accentIdx ? " accent" : "");
+            el.textContent = w;
+            row.appendChild(el);
+            wordEls.push(el);
+          });
+          block.appendChild(row);
+        });
+
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+
+        // Ornament reveal (scale x from 0 to 1)
+        tl.from(
+          "#ornament",
+          { scaleX: 0, duration: 0.55, ease: "expo.out" },
+          0.05,
+        );
+
+        // Words: slide up from below, stagger
+        // First word lands by t=0.25 — so frame 0 already has it ~halfway in
+        tl.from(
+          wordEls,
+          {
+            yPercent: 110,
+            duration: vars.entryDuration,
+            ease: "power4.out",
+            stagger: vars.stagger,
+          },
+          0.05,
+        );
+
+        // Subline fade-in last (still readable enough at t=0 b/c subline is small support)
+        tl.from(
+          "#subline",
+          { y: 30, opacity: 0, duration: 0.6, ease: "power2.out" },
+          0.05 + vars.entryDuration + wordEls.length * vars.stagger - 0.2,
+        );
+
+        window.__timelines["slide-bold"] = tl;
+      })();
+    </script>
+  </body>
+</html>

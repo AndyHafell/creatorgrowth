@@ -1,0 +1,344 @@
+<!doctype html>
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"text","type":"string","label":"Text","default":"hello what is going on"},
+    {"id":"fontSize","type":"number","label":"Font size (px)","default":140},
+    {"id":"typeDuration","type":"number","label":"Type duration (s)","default":2.6},
+    {"id":"caretColor","type":"color","label":"Caret color","default":"#39d98a"}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: radial-gradient(ellipse at center, #1a1d24 0%, #07090d 75%);
+        font-family: "JetBrains Mono", monospace;
+      }
+      #stage {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 120px 140px;
+        gap: 28px;
+        position: relative;
+      }
+      #grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+        background-size: 64px 64px;
+        pointer-events: none;
+      }
+      #prompt-line {
+        font-size: 28px;
+        letter-spacing: 0.18em;
+        color: rgba(160, 200, 180, 0.65);
+        text-transform: uppercase;
+        font-weight: 600;
+        position: relative;
+      }
+      #prompt-line::before {
+        content: "›";
+        margin-right: 12px;
+        color: #39d98a;
+      }
+      #text-row {
+        position: relative;
+        max-width: 1640px;
+      }
+      #typed {
+        font-weight: 700;
+        color: #f5f7fb;
+        line-height: 1.12;
+        letter-spacing: -0.01em;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      #caret {
+        display: inline-block;
+        width: 0.55em;
+        height: 0.95em;
+        background: var(--caret, #39d98a);
+        vertical-align: -0.05em;
+        margin-left: 0.04em;
+        box-shadow: 0 0 22px var(--caret-glow, rgba(57, 217, 138, 0.65));
+        border-radius: 3px;
+      }
+      #subline-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        font-size: 56px;
+        font-weight: 600;
+        line-height: 1.05;
+        color: rgba(245, 247, 251, 0.78);
+        margin-top: 8px;
+      }
+      #sub-prompt {
+        color: var(--caret, #39d98a);
+        font-weight: 700;
+      }
+      #sub-caret {
+        display: inline-block;
+        width: 0.42em;
+        height: 0.85em;
+        background: var(--caret, #39d98a);
+        margin-left: 0.06em;
+        vertical-align: -0.05em;
+        border-radius: 2px;
+        box-shadow: 0 0 14px var(--caret-glow, rgba(57, 217, 138, 0.55));
+      }
+      #progress-row {
+        margin-top: 40px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        max-width: 1640px;
+        width: 100%;
+      }
+      #progress-label {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: 0.22em;
+        color: rgba(160, 200, 180, 0.85);
+        text-transform: uppercase;
+        min-width: 110px;
+      }
+      #progress-track {
+        flex: 1;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 999px;
+        overflow: hidden;
+        position: relative;
+        max-width: 980px;
+      }
+      #progress-fill {
+        position: absolute;
+        inset: 0 100% 0 0;
+        background: linear-gradient(
+          90deg,
+          var(--caret, #39d98a),
+          rgba(255, 255, 255, 0.9)
+        );
+        box-shadow: 0 0 18px var(--caret-glow, rgba(57, 217, 138, 0.6));
+        border-radius: 999px;
+      }
+      #progress-pct {
+        font-size: 22px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.04em;
+        color: var(--caret, #39d98a);
+        min-width: 70px;
+        text-align: right;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="typewriter-dark"
+      data-start="0"
+      data-duration="10"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div id="stage">
+        <div id="grid"></div>
+        <div id="prompt-line">motion graphics</div>
+        <div id="text-row">
+          <span id="typed"></span><span id="caret"></span>
+        </div>
+        <div id="subline-row">
+          <span id="sub-prompt">→</span>
+          <span id="sub-typed"></span><span id="sub-caret"></span>
+        </div>
+        <div id="progress-row">
+          <div id="progress-label">rendering</div>
+          <div id="progress-track"><div id="progress-fill"></div></div>
+          <div id="progress-pct">0%</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const vars = window.__hyperframes
+          ? window.__hyperframes.getVariables()
+          : {
+              text: "hello what is going on",
+              fontSize: 140,
+              typeDuration: 2.6,
+              caretColor: "#39d98a",
+            };
+
+        const typed = document.getElementById("typed");
+        const caret = document.getElementById("caret");
+        const full = String(vars.text || "");
+
+        typed.style.fontSize = vars.fontSize + "px";
+        caret.style.fontSize = vars.fontSize + "px";
+
+        const c = vars.caretColor || "#39d98a";
+        caret.style.setProperty("--caret", c);
+        function hexToRgba(hex, a) {
+          const h = hex.replace("#", "");
+          const r = parseInt(h.substring(0, 2), 16);
+          const g = parseInt(h.substring(2, 4), 16);
+          const b = parseInt(h.substring(4, 6), 16);
+          return "rgba(" + r + "," + g + "," + b + "," + a + ")";
+        }
+        caret.style.setProperty("--caret-glow", hexToRgba(c, 0.65));
+
+        // Seed initial state — start with ~30% pre-typed so the t=0 frame reads as text
+        const prefillCount = Math.max(3, Math.floor(full.length * 0.3));
+        typed.textContent = full.substring(0, prefillCount);
+
+        const total = 10;
+        const typeDur = Math.max(0.6, Math.min(vars.typeDuration, total - 1));
+        const blinkCycle = 0.85;
+        // Blink runs across the full 10s so the cursor is alive in every frame.
+        const blinks = Math.max(2, Math.ceil(total / blinkCycle) - 1);
+
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+
+        // Prompt label settle
+        tl.from(
+          "#prompt-line",
+          { x: -32, duration: 0.6, ease: "power3.out" },
+          0.05,
+        );
+
+        // Typing via progressive substring (onUpdate works under timeline.seek)
+        const progress = { v: prefillCount / full.length };
+        tl.to(
+          progress,
+          {
+            v: 1,
+            duration: typeDur,
+            ease: "none",
+            onUpdate() {
+              const len = Math.floor(progress.v * full.length);
+              if (typed.textContent.length !== len) {
+                typed.textContent = full.substring(0, len);
+              }
+            },
+          },
+          0.15,
+        );
+
+        // Caret blink from t=0 to t=10 so every sampled frame has a live cursor
+        tl.to(
+          "#caret",
+          {
+            opacity: 0.15,
+            duration: blinkCycle / 2,
+            ease: "steps(1)",
+            yoyo: true,
+            repeat: blinks,
+          },
+          0,
+        );
+
+        // Ambient background grid pan — keeps motion across the full 10s
+        tl.fromTo(
+          "#grid",
+          { backgroundPosition: "0px 0px" },
+          {
+            backgroundPosition: "64px 64px",
+            duration: total,
+            ease: "none",
+          },
+          0,
+        );
+
+        // Progress bar fills linearly from t=0 to t≈9.5s so every sampled frame
+        // (0, 2.5, 5, 7.5, 10) shows a distinctly different state.
+        const fillDur = total - 0.5;
+        const fillObj = { v: 0 };
+        const pctEl = document.getElementById("progress-pct");
+        const fillEl = document.getElementById("progress-fill");
+        tl.to(
+          fillObj,
+          {
+            v: 1,
+            duration: fillDur,
+            ease: "none",
+            onUpdate() {
+              const pct = Math.round(fillObj.v * 100);
+              if (fillEl) fillEl.style.right = (100 - pct) + "%";
+              if (pctEl) pctEl.textContent = pct + "%";
+            },
+          },
+          0,
+        );
+
+        // Subline: a second line that types in after the main text completes,
+        // so the second half of the video has fresh text appearing too.
+        const subFull = "ready when you are";
+        const subTyped = document.getElementById("sub-typed");
+        const subProgress = { v: 0 };
+        const subStart = typeDur + 0.6;
+        const subDur = Math.min(3.0, total - subStart - 1.0);
+        // Hide subline elements initially (opacity), reveal as a unit
+        const subRow = document.getElementById("subline-row");
+        if (subRow) subRow.style.opacity = "0";
+        tl.to(
+          subRow,
+          { opacity: 1, duration: 0.4, ease: "power2.out" },
+          subStart - 0.1,
+        );
+        tl.to(
+          subProgress,
+          {
+            v: 1,
+            duration: subDur,
+            ease: "none",
+            onUpdate() {
+              const len = Math.floor(subProgress.v * subFull.length);
+              if (subTyped.textContent.length !== len) {
+                subTyped.textContent = subFull.substring(0, len);
+              }
+            },
+          },
+          subStart,
+        );
+
+        // Sub caret blink continues throughout
+        tl.to(
+          "#sub-caret",
+          {
+            opacity: 0.2,
+            duration: blinkCycle / 2,
+            ease: "steps(1)",
+            yoyo: true,
+            repeat: blinks,
+          },
+          subStart,
+        );
+
+        window.__timelines["typewriter-dark"] = tl;
+      })();
+    </script>
+  </body>
+</html>

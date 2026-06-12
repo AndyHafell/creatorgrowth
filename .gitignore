@@ -1,0 +1,27 @@
+.pyc
+__pycache__/
+.DS_Store
+# Live DBs — never track. rebuild.sh used to auto-commit them which
+# meant any deploy that did `git reset --hard` clobbered the live data
+# with whatever was in the last commit. videos_smoketest_*.db is the
+# smoke test's per-run copy.
+videos.db
+videos.db-journal
+videos.db-wal
+videos.db-shm
+videos_test.db
+videos_test.db-journal
+videos_test.db-wal
+videos_test.db-shm
+videos_smoketest_*.db
+ideas.db
+dashboard.db
+overnight/_selects_raw.txt
+overnight/skool_members_manual.json
+overnight/skool_members_snapshot.json
+.env
+
+# code snapshots — never track
+*.bak.*
+*.bak
+.superpowers/

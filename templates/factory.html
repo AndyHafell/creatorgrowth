@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏭 The Factory — CreatorGrowth</title>
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<style>
+  :root{
+    --bg:#0d1016; --grid:#161b24; --panel:#141a24; --panel2:#1a2030; --line:#2a3140; --line2:#3a4458;
+    --ink:#e7ecf3; --muted:#8b95a7; --dim:#56607a; --gold:#f5b942; --gold-deep:#e8a800;
+    --good:#52c46e; --bad:#e06a6a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden}
+  body{background:var(--bg);color:var(--ink);
+    font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    user-select:none;-webkit-user-select:none;display:flex;flex-direction:column;height:100vh}
+  a{color:var(--gold);text-decoration:none}
+
+  .topbar{display:flex;align-items:center;gap:18px;padding:0 18px;flex:none;
+    border-bottom:1px solid var(--line);background:linear-gradient(180deg,#19202c,#0e1117);height:56px}
+  .topbar h1{font-size:18px;margin:0;letter-spacing:.4px;white-space:nowrap}
+  .topbar .hud{display:flex;gap:9px;align-items:center;flex-wrap:nowrap}
+  .pill{display:flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:9px;padding:5px 11px;font-size:12.5px;color:var(--muted);white-space:nowrap}
+  .pill b{color:var(--ink);font-size:15px;font-weight:700;min-width:14px;text-align:right}
+  .pill.act{border-color:var(--line2)}
+  .pill.wait b{color:var(--gold)}
+  .pill.alert{border-color:var(--gold);background:#26210f;animation:pillpulse 1.5s ease-in-out infinite}
+  @keyframes pillpulse{0%,100%{box-shadow:0 0 0 0 rgba(245,185,66,0)}50%{box-shadow:0 0 0 3px rgba(245,185,66,.22)}}
+  .pill.clk{cursor:pointer;transition:.12s}
+  .pill.clk:hover{border-color:var(--gold)}
+  .topbar .spacer{flex:1}
+  .back{color:var(--muted);border:1px solid var(--line);padding:7px 13px;border-radius:8px;font-size:12.5px;white-space:nowrap}
+  .back:hover{color:var(--ink);border-color:var(--gold)}
+
+  .toolbar{display:flex;align-items:center;gap:6px;padding:8px 14px;border-bottom:1px solid var(--line);flex:none;
+    background:var(--panel);min-height:62px;overflow-x:auto;scrollbar-width:thin}
+  .tool{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    min-width:60px;height:46px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);
+    cursor:pointer;font-size:11px;color:var(--muted);transition:.12s;padding:3px 7px;flex:none}
+  .tool .ic{font-size:19px;line-height:1}
+  .tool .nm{font-size:10.5px;letter-spacing:.2px}
+  .tool:hover{border-color:var(--line2);color:var(--ink);background:#1f2737}
+  .tool.sel{border-color:var(--gold);background:#26210f;color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+  .tool.you{border-color:#4a3a10}
+  .tool.you .youdot{position:absolute;top:-6px;right:-5px;font-size:11px;background:var(--panel);
+    border:1px solid #4a3a10;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center}
+  .tool .numkey{position:absolute;bottom:-5px;left:-4px;font-size:9px;font-weight:700;color:var(--dim);
+    background:var(--panel);border:1px solid var(--line);border-radius:5px;min-width:14px;height:14px;
+    display:flex;align-items:center;justify-content:center;padding:0 2px}
+  .tool.sel .numkey{color:var(--gold);border-color:#4a3a10}
+  .tgrp{display:flex;align-items:center;height:46px;padding:0 2px 0 9px;margin-left:5px;
+    border-left:1px solid var(--line);font-size:8.5px;font-weight:800;letter-spacing:1.3px;
+    color:var(--dim);text-transform:uppercase;white-space:nowrap;flex:none}
+  .tgrp.first{border-left:none;margin-left:0;padding-left:0}
+  .sep{width:1px;height:32px;background:var(--line2);margin:0 9px;flex:none;border-radius:1px}
+  .hint{color:var(--dim);font-size:11px;margin-left:10px;flex:none;white-space:nowrap}
+  .hint b{color:var(--muted)}
+
+  .main{display:flex;flex:1;min-height:0;position:relative}
+  .floor{flex:1;overflow:auto;position:relative;background:radial-gradient(120% 120% at 30% 20%,#11151d,#0a0d12)}
+  #cv{display:block;cursor:crosshair;margin:auto}
+  .ware{width:300px;flex:none;border-left:1px solid var(--line);background:var(--panel);
+    display:flex;flex-direction:column}
+  .ware h2{margin:0;padding:14px 15px;border-bottom:1px solid var(--line);font-size:14px;font-weight:700;
+    display:flex;align-items:center;justify-content:space-between}
+  .ware h2 .n{color:var(--gold);background:#26210f;border:1px solid #4a3a10;border-radius:7px;padding:1px 9px;font-size:13px}
+  .ware-list{overflow:auto;padding:11px;flex:1;display:flex;flex-direction:column;gap:8px}
+  .wcard{background:#1a2030;border:1px solid var(--line);border-left:3px solid var(--gold);
+    border-radius:8px;padding:8px 9px;cursor:pointer;transition:.12s}
+  .wcard:hover{border-color:#46506a}
+  .wcard .t{font-size:12px;line-height:1.3}
+  .wcard .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+  .tag{font-size:9.5px;color:var(--muted);background:#10141d;border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+  .tag.good{color:#f5b942;border-color:#4a3a10}
+  .empty{color:#4a5468;font-size:12px;text-align:center;padding:20px 8px;font-style:italic}
+  .waretoggle{background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;
+    width:24px;height:24px;cursor:pointer;font-size:15px;line-height:1;padding:0;flex:none}
+  .waretoggle:hover{color:var(--gold);border-color:var(--gold)}
+  #wareReopen{display:none;position:absolute;top:14px;right:0;z-index:6;cursor:pointer;
+    background:var(--panel2);border:1px solid var(--line);border-right:none;border-radius:9px 0 0 9px;
+    padding:11px 7px;color:var(--muted);font-size:12px;align-items:center;gap:7px;writing-mode:vertical-rl}
+  #wareReopen:hover{color:var(--gold);border-color:var(--gold)}
+  .main.ware-collapsed .ware{display:none}
+  .main.ware-collapsed #wareReopen{display:flex}
+  /* station manager */
+  .streq{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .streq.off{opacity:.5}
+  .stic{width:30px;height:30px;border-radius:7px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:16px;flex:none}
+  .stname{flex:1;font-size:13px;min-width:0}
+  .styou,.stcustom{font-size:9.5px;color:var(--muted);background:#10141d;border:1px solid var(--line);border-radius:4px;padding:1px 5px;margin-left:5px;white-space:nowrap}
+  .stbtn{background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:7px;padding:5px 12px;cursor:pointer;font-size:12px;flex:none}
+  .stbtn:hover{border-color:var(--gold);color:var(--ink)}
+  .stbtn.danger:hover{border-color:var(--bad);color:var(--bad)}
+  .staddrow{display:flex;gap:8px;margin-top:14px}
+  .stinput{flex:1;background:#10141d;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit}
+  .stinput.ic{flex:none;width:50px;text-align:center;font-size:17px}
+  .stinput:focus{outline:none;border-color:var(--gold)}
+  .sthd{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin:16px 0 4px}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(6,9,14,.74);display:none;z-index:50;
+    align-items:center;justify-content:center;padding:24px}
+  .modal-bg.open{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line2);border-radius:14px;
+    width:min(600px,100%);max-height:90vh;overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.55)}
+  /* Agent A widens the duel via a .duel-wide class on open — keep it able to grow. */
+  .modal.duel-wide{width:min(900px,100%)}
+  .modal h2{margin:0;padding:16px 18px;border-bottom:1px solid var(--line);font-size:16px}
+  .modal .close{float:right;cursor:pointer;color:var(--muted);font-size:18px;border:none;background:none}
+  .modal .body{padding:16px 18px}
+  .el{margin-bottom:15px}
+  .el h3{margin:0 0 5px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--gold)}
+  .el .k{color:var(--muted);font-size:12px}
+  .el pre{white-space:pre-wrap;background:#10141d;border:1px solid var(--line);border-radius:8px;
+    padding:9px 10px;margin:4px 0 0;font:12.5px/1.5 inherit;color:var(--ink)}
+
+  /* Content Doc (scripting) live modal */
+  .scr-run{display:flex;align-items:flex-start;gap:11px;background:#171a12;border:1px solid #3a3415;
+    border-radius:10px;padding:12px 13px;margin:0 0 13px}
+  .scr-run-t{font-weight:700;font-size:14px;color:#f5b942;margin-bottom:4px;
+    font-variant-numeric:tabular-nums}
+  .scr-spin{flex:none;width:18px;height:18px;border-radius:50%;border:2.5px solid #4a4015;
+    border-top-color:#f5b942;animation:scrspin .8s linear infinite;margin-top:2px}
+  @keyframes scrspin{to{transform:rotate(360deg)}}
+  .scr-title{font-size:15px;font-weight:700;color:var(--ink);margin:0 0 6px;line-height:1.3}
+  .scr-chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.4px;color:#0c0f16;
+    background:var(--gold);border-radius:6px;padding:2px 8px}
+  .scr-go{background:var(--gold);color:#0c0f16;font-weight:700;font-size:13px;border:none;
+    border-radius:8px;padding:9px 15px;cursor:pointer}
+  .scr-go:hover{filter:brightness(1.08)}
+
+  /* decision modal */
+  .swipe-thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:9px;border:1px solid var(--line);display:block;margin:0 0 13px;background:#10141d}
+  .swipe-title{font-size:21px;font-weight:700;line-height:1.32;margin:2px 0 7px}
+  .swipe-src{display:flex;align-items:center;gap:9px;margin:0 0 15px}
+  .swipe-av{width:30px;height:30px;border-radius:50%;object-fit:cover;flex:none;background:#10141d;border:1px solid var(--line)}
+  .swipe-srcmeta{min-width:0}
+  .swipe-ch{color:var(--ink);font-size:13px;font-weight:600;line-height:1.25}
+  .swipe-views{color:var(--muted);font-size:12px;line-height:1.35}
+  .pkg-src{display:flex;gap:11px;align-items:center;background:#10141d;border:1px solid var(--line);border-radius:9px;padding:9px;margin:0 0 14px}
+  .pkg-thumb{width:104px;aspect-ratio:16/9;object-fit:cover;border-radius:6px;flex:none;background:#0b0e15;border:1px solid var(--line)}
+  .pkg-srcmeta{min-width:0}
+  .pkg-src-lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin-bottom:3px}
+  .pkg-src-title{font-size:13.5px;font-weight:600;line-height:1.3;color:var(--ink)}
+  .pkg-src-sub{font-size:11.5px;color:var(--muted);margin-top:3px}
+  .pkg-src-doing{font-size:12px;color:var(--ink);margin-top:6px;line-height:1.35}
+  .duel{display:flex;gap:10px;align-items:stretch}
+  .duel-vs{align-self:center;color:var(--muted);font-weight:700;font-size:12px;flex:none}
+  .duel-col{flex:1;min-width:0;background:#10141d;border:1px solid var(--line);border-radius:10px;padding:9px;cursor:pointer;transition:.12s}
+  .duel-col:hover{border-color:var(--gold);background:#171c28}
+  .duel-thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:7px;display:block;background:#0b0e15;border:1px solid var(--line);margin-bottom:8px}
+  .duel-title{font-size:14px;font-weight:700;line-height:1.3;color:var(--ink)}
+  .duel-sub{font-size:11px;color:var(--muted);margin:3px 0 7px}
+  .duel-doing{font-size:12px;color:var(--ink);line-height:1.4;margin-bottom:5px;min-height:17px}
+  .srcbadge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;letter-spacing:.02em;
+    color:var(--sc);background:color-mix(in srgb,var(--sc) 16%,transparent);border:1px solid color-mix(in srgb,var(--sc) 45%,transparent);
+    border-radius:999px;padding:2px 8px;margin:0 0 7px;text-transform:uppercase;line-height:1.4}
+  .duel-score{font-size:11.5px;color:var(--muted);line-height:1.4}
+  .bigbtn.both{background:linear-gradient(180deg,#3a5fb0,#274684);border-color:#3c66bd}
+  .bigbtn.both:hover{filter:brightness(1.13)}
+  /* duel = bigger decision surface. Width lives on Agent C's .modal.duel-wide rule above;
+     these just scale the duel internals to match the wider modal. */
+  .modal.duel-wide .duel-thumb{margin-bottom:11px}
+  .modal.duel-wide .duel-title{font-size:17px}
+  .modal.duel-wide .duel-sub{font-size:12px}
+  .modal.duel-wide .duel-doing{font-size:13.5px;min-height:20px}
+  .duel-btns{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+  .duel-btns .bigbtn{min-width:135px;padding:13px}
+  .take{background:#10141d;border:1px solid var(--line);border-radius:8px;padding:11px 12px;
+    color:var(--muted);min-height:48px;margin-bottom:16px;font-size:12.5px;line-height:1.5}
+  .dec-btns{display:flex;gap:10px}
+  .bigbtn{flex:1;padding:15px;border-radius:11px;border:1px solid var(--line);font-size:15px;
+    font-weight:700;cursor:pointer;background:#1a2030;color:var(--ink);transition:.12s;text-align:center}
+  .bigbtn.pass:hover{border-color:#e06a6a;color:#e06a6a}
+  .bigbtn.keep{background:linear-gradient(180deg,#2a7a45,#1f5e34);border-color:#2f8a4d}
+  .bigbtn.keep:hover{filter:brightness(1.12)}
+  .tcard{background:#1a2030;border:1px solid var(--line);border-radius:9px;padding:11px 12px;
+    cursor:pointer;margin-bottom:8px;transition:.12s;font-size:13.5px;line-height:1.35}
+  .tcard:hover{border-color:var(--gold);background:#211c0f}
+  .chosen{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}
+  .chip{background:#26210f;border:1px solid #4a3a10;color:var(--gold);border-radius:6px;padding:3px 8px;font-size:11.5px}
+  .qcount{color:var(--muted);font-size:12px;margin-top:12px;text-align:center}
+  .row-btns{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  .sbtn{padding:9px 13px;border-radius:8px;border:1px solid var(--line);background:#1a2030;color:var(--ink);cursor:pointer;font-size:13px}
+  .sbtn:hover{border-color:var(--gold)}
+  .sbtn.primary{background:linear-gradient(180deg,var(--gold),var(--gold-deep));color:#1a1306;font-weight:700;border:none}
+  .sbtn:disabled{opacity:.45;cursor:default}
+  .sbtn:disabled:hover{border-color:var(--line)}
+  .pkg-card{font-size:12px;margin:12px 0 2px;padding:8px 10px;border-radius:7px;background:#10141d;border:1px solid var(--line);color:var(--muted);text-align:center}
+  .pkg-card.ok{color:#52c46e;border-color:#1f3a28;background:#0e1712}
+  .pkg-card.err{color:#f5b942;border-color:#3a2f12;background:#171206}
+  .pkg-card a{color:var(--gold)}
+  .pthumbs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 4px}
+  .pthumb{position:relative;border:2px solid var(--line);border-radius:8px;overflow:hidden;cursor:pointer;background:#0b0e15;aspect-ratio:16/9}
+  .pthumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .pthumb:hover{border-color:var(--gold)}
+  .pthumb.sel{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold) inset}
+  .pthumb.sel::after{content:'✓';position:absolute;top:4px;right:6px;color:#1a1306;background:var(--gold);
+    border-radius:50%;width:18px;height:18px;line-height:18px;text-align:center;font-size:12px;font-weight:700}
+  .pthumb-tag{position:absolute;left:5px;bottom:5px;background:rgba(8,11,18,.82);color:#c7cedd;
+    font-size:10px;padding:2px 6px;border-radius:5px}
+  .spin{display:inline-block;width:12px;height:12px;border:2px solid #3a4458;border-top-color:var(--gold);
+    border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:5px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  .toast{position:fixed;bottom:34px;left:50%;transform:translateX(-50%);background:#1c2230;
+    border:1px solid var(--line);color:var(--ink);padding:8px 15px;border-radius:9px;font-size:13px;
+    z-index:60;opacity:0;transition:.25s;pointer-events:none;max-width:70vw;text-align:center}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>🏭 The Factory</h1>
+    <div class="hud">
+      <span class="pill" title="Ideas still waiting to be mined">⛏ Ore <b id="hOre">–</b></span>
+      <span class="pill act" title="Items currently moving through your line">⚙ On line <b id="hLine">0</b></span>
+      <span class="pill wait" id="pWait" title="Stations waiting for YOU to decide (Sorter / Packaging)">🫵 Your call <b id="hWait">0</b></span>
+      <span class="pill" title="Finished assets delivered to the warehouse">📦 Delivered <b id="hDeliv">0</b></span>
+      <span class="pill clk" onclick="openDiscardPile()" title="Passed ideas — recover any of them">🗑 Discarded <b id="hDiscard">0</b></span>
+    </div>
+    <span class="spacer"></span>
+    <a class="back" href="#" onclick="openHelp();return false;">❔ How to play</a>
+    <a class="back" href="/">← Dashboard</a>
+  </div>
+
+  <div class="toolbar" id="toolbar"></div>
+
+  <div class="main" id="main">
+    <div class="floor" id="floor"><canvas id="cv"></canvas></div>
+    <div class="ware">
+      <h2><span style="flex:1">📦 Warehouse</span><span class="n" id="wN">0</span><button class="waretoggle" title="Hide warehouse" onclick="toggleWare()">›</button></h2>
+      <div class="ware-list" id="wList"><div class="empty">Deliver an asset to the hub.</div></div>
+    </div>
+    <div id="wareReopen" title="Show warehouse" onclick="toggleWare()">📦 Warehouse</div>
+  </div>
+
+  <div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+    <div class="modal"><h2><button class="close" onclick="closeModal()">×</button><span id="mTitle"></span></h2>
+      <div class="body" id="mBody"></div></div>
+  </div>
+
+  <!-- decision modal — dismissible; the machine stays pending so you can reopen it -->
+  <div class="modal-bg" id="decBg" onclick="if(event.target===this)closeDecisionPanel()">
+    <div class="modal"><h2><button class="close" onclick="closeDecisionPanel()">×</button><span id="decTitle"></span></h2>
+      <div class="body" id="decBody"></div></div>
+  </div>
+
+  <div class="modal-bg" id="helpBg" onclick="if(event.target===this)closeHelp()">
+    <div class="modal"><h2><button class="close" onclick="closeHelp()">×</button>🏭 How the Factory works</h2>
+      <div class="body" style="font-size:13.5px;line-height:1.7">
+        <p style="margin-top:0;font-size:14.5px"><b>Your video ideas are ore.</b> You build a little assembly line that carries each idea through the stations — and <b>you</b> are the filter at the two steps that need a human: the Sorter and Packaging.</p>
+
+        <h3 style="color:var(--gold);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:18px 0 7px">Build the line (left toolbar)</h3>
+        <ol style="padding-left:18px;margin:0 0 8px">
+          <li><b>⛏ Drill</b> — drop it on a glowing <b>ore</b> tile. It mines one idea at a time. Press <b>R</b> to aim its arrow at your belt.</li>
+          <li><b>⇉ Belt</b> — <b>click-drag</b> to lay a conveyor from the drill onward. Belts plug <i>straight</i> into machines and the hub.</li>
+          <li><b>Stations</b> — drop them in order: <b>🔀 Sorter → ✍️ Content Doc → 📦 Packaging → 🎙️ → ✂️ → 🚀</b>, then a <b>🏠 Hub</b> at the end. Each machine is <b>2×2</b> tiles.</li>
+        </ol>
+
+        <h3 style="color:var(--gold);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:18px 0 7px">Where you come in (🫵)</h3>
+        <p style="margin:0 0 8px">Two stations stop and <b>wait for you</b> — they pulse gold and count up in <b>🫵 Your call</b> at the top:</p>
+        <ul style="padding-left:18px;margin:0 0 8px">
+          <li><b>🔀 Sorter</b> — two ideas face off. <b>Click the machine</b> and pick the one you'd actually make (or “neither”). Your morning filter. Passed ideas go to 🗑 Discarded — recoverable.</li>
+          <li><b>📦 Packaging</b> — <b>click it</b> to choose your winning titles, then the thumbnail.</li>
+        </ul>
+        <p style="color:var(--muted);margin:0 0 8px">The other stations run on their own. <b>Click any machine</b> any time to see what it's doing and what it produced.</p>
+
+        <h3 style="color:var(--gold);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:18px 0 7px">Make it yours (sandbox)</h3>
+        <p style="margin:0 0 8px">Hit <b>✎ Stations</b> in the toolbar to <b>build your own pipeline</b> — hide stations you don't use, or add your own boxes (e.g. split Packaging into a <b>Thumbnail</b> step and a <b>Title</b> step). Custom stations are pass-throughs, so you can experiment with the flow freely.</p>
+
+        <h3 style="color:var(--gold);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:18px 0 7px">Good to know</h3>
+        <p style="color:var(--muted);margin:0 0 8px">Finished assets land in the <b>📦 Warehouse</b> — hit the <b>›</b> in its header to hide it. The <b>↦ Grabber</b> is optional (bridging a gap / side-feeding). <b>Hold ⌘ and scroll</b> (or pinch the trackpad) to zoom — or use the <b>➖ / ➕</b> buttons.</p>
+        <h3 style="color:var(--gold);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:18px 0 7px">Select, copy &amp; bulk-erase</h3>
+        <p style="margin:0 0 8px"><b>Shift-drag</b> across the floor to <b>select</b> a region (machines, belts, the lot). Then <b>⌘C</b> to copy and <b>⌘V</b> to drop a movable copy — click to stamp it, <b>Esc</b> to stop. <b>Delete</b> wipes the selection. To erase a bunch fast, <b>hold right-click and drag</b> over everything you want gone.</p>
+        <p style="color:var(--muted);margin:0"><b>Keys:</b> <b>1–9</b> pick a tool · <b>R</b> rotate · <b>shift-drag</b> select · <b>⌘C/⌘V</b> copy/paste · <b>Delete</b> erase selection · <b>right-drag</b> bulk-erase · space pause. Sorter &amp; Content Doc call real AI; Voiceover / Edit / Publish are honest stubs.</p>
+      </div></div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+<script>
+// ───────────────────────── config ─────────────────────────
+const COLS=46, ROWS=26, TILE=34, MSIZE=2;
+const DIRS=[[0,-1],[1,0],[0,1],[-1,0]];           // N E S W (= output facing)
+const DIRNAME=['N','E','S','W'];
+
+// machine type → { station, out kind, color, icon, label, human:'swipe'|'package' }
+const MACH={
+  sorter:    {station:'sorter',    out:'sorted',  col:'#3a6fd0', ic:'🔀', label:'Sorter',  human:'swipe'},
+  scripting: {station:'scripting', out:'script',  col:'#d09a2a', ic:'✍️', label:'Content Doc'},
+  packaging: {station:'packaging', out:'packaged',col:'#c558c5', ic:'📦', label:'Packaging', human:'package'},
+  voiceover: {station:'voiceover', out:'voiced',  col:'#8a52c8', ic:'🎙️', label:'Voiceover'},
+  edit:      {station:'edit',      out:'edited',  col:'#3aa85f', ic:'✂️', label:'Editor'},
+  publish:   {station:'publish',   out:'published',col:'#c25a3a',ic:'🚀', label:'Publisher'},
+};
+// built-in stations + their toolbar tooltips (custom ones get a generic tip)
+const BUILTIN_STATIONS=['sorter','scripting','packaging','voiceover','edit','publish'];
+const STATION_TIPS={
+  sorter:'Sorter — YOU DECIDE. Two ideas face off; pick the one you’d actually make (or neither).',
+  scripting:'Content Doc (auto) — writes a FULL content-doc script (hook + beats + outro) with real AI. Takes ~1–2 min; click it to watch the timer + read the doc.',
+  packaging:'Packaging — YOU DECIDE. Pick your winning titles, then the thumbnail.',
+  voiceover:'Voiceover (auto stub) — marks the voiceover step.',
+  edit:'Editor (auto stub) — marks the edit step.',
+  publish:'Publisher (auto stub) — marks it published. Does not actually publish anything.',
+};
+const CUSTOM_TIP='Custom station (sandbox) — a pass-through step you defined. Use it to lay out your own pipeline.';
+const KINDCOL={idea:'#8b95a7',sorted:'#4a90e2',script:'#f5b942',packaged:'#d96fe0',
+  voiced:'#a875e6',edited:'#52c46e',published:'#ff7a4a',custom:'#9aa3b5'};
+const KINDGLYPH={idea:'·',sorted:'✓',script:'✎',packaged:'▣',voiced:'♪',edited:'✂',published:'★',custom:'✦'};
+
+// ── idea sources (the three ore types) ──
+// copper = competitors · iron = Andy's Best tab · stone = The Rundown newsletter.
+// A drill reads the ore type under it and mines from the matching source pool;
+// every mined idea carries its `source` so the duel can show a source badge.
+const ORE_SRC={copper:'competitor',iron:'best',stone:'rundown'};   // tile type → source tag
+const ORE_COL={                                                    // {tile base, ore fleck} per type
+  copper:{base:'#1d1408',fleck:'#c87b3c'},
+  iron:  {base:'#121820',fleck:'#8fa3b8'},
+  stone: {base:'#17181c',fleck:'#a6a29a'},
+};
+const SRC={                                                        // source badge on duel / swipe cards
+  competitor:{ic:'🟠',label:'Competitor',col:'#c87b3c'},
+  best:      {ic:'🔩',label:'Best',      col:'#8fa3b8'},
+  rundown:   {ic:'🪨',label:'Rundown',   col:'#b59b6a'},
+};
+function srcMeta(s){return SRC[s]||SRC.competitor;}
+function srcBadge(s){const m=srcMeta(s);return `<span class="srcbadge" style="--sc:${m.col}">${m.ic} ${m.label}</span>`;}
+// After the Sorter, a kept idea (kind='sorted') is tinted by its source so copper/iron/stone
+// stay visually distinct on the belt out: copper sorted / iron sorted / stone sorted.
+const SORTED_COL={competitor:'#e0863f', best:'#9fb6cf', rundown:'#cdb083'};
+
+const TOOLS=[
+  {grp:'Build'},
+  {id:'drill',  ic:'⛏', name:'Drill',   tip:'Drill — place on a glowing ore tile. Mines one idea at a time onto the belt. Press R to aim it.'},
+  {id:'belt',   ic:'⇉', name:'Belt',    tip:'Belt — click-drag to lay a conveyor. Plugs straight into machines and the hub.'},
+  {id:'grabber',ic:'↦', name:'Grabber', tip:'Grabber (optional) — bridges a gap or side-feeds a machine. You usually don’t need it.'},
+  {id:'splitter',ic:'⋔', name:'Splitter', tip:'Splitter — one belt in (from behind), splits the stream evenly to its two side outputs (left + right of where it faces). Feed two machines from one. Press R to aim.'},
+  {grp:'Ore'},
+  {id:'oreCopper',ic:'🟠', name:'Copper', tip:'Copper ore = competitors. Paint tiles, then drill them to mine competitor ideas.'},
+  {id:'oreIron',  ic:'🔩', name:'Iron',   tip:'Iron ore = your Best tab. Paint tiles + drill to mine your own proven idea cards.'},
+  {id:'oreStone', ic:'🪨', name:'Stone',  tip:'Stone ore = The Rundown AI newsletter. Paint tiles + drill to mine today’s AI news as ideas.'},
+  {grp:'Stations', stations:true},
+  {grp:'Deliver'},
+  {id:'hub', ic:'🏠', name:'Hub',  tip:'Hub — the end of the line. Finished assets land in your Warehouse on the right.'},
+  {id:'erase',ic:'⌫', name:'Erase', tip:'Erase — remove a tile or machine. (You can also right-click anything.)'},
+];
+
+// ───────────────────────── state ─────────────────────────
+let grid = Array.from({length:ROWS},()=>Array(COLS).fill(null));
+let ore = new Map();   // "x,y" → ore type ('copper'|'iron'|'stone'); typed so drills mine the right source
+let ideaQueue = [];
+// Normalize an /api/factory/ore row (or a stored idea) into the canonical floor-idea shape.
+function ideaFrom(o){
+  const src=o.source||'competitor';
+  const it={title:o.title||'',video_id:o.video_id||'',thumb:o.thumb||o.thumbnail_url||'',
+    channel:o.channel||o.channel_title||'',avatar:o.avatar||o.channel_thumb||'',
+    views:o.views||o.view_count||0,published:o.published||o.published_at||'',
+    source:src,blurb:o.blurb||'',category:o.category||''};
+  // Rundown stories ship a blurb → pre-fill the Sorter "what's happening" line so the
+  // duel shows it instantly with no AI call (and no sandbox row created just to view it).
+  if(o.elements)it.elements={...o.elements};
+  else if(src==='rundown'&&o.blurb)it.elements={sort:{doing:o.blurb}};
+  return it;
+}
+// Remove + return the first queued idea of a given source (a drill mines its own ore).
+function shiftIdea(src){const i=ideaQueue.findIndex(o=>(o.source||'competitor')===src);return i<0?null:ideaQueue.splice(i,1)[0];}
+// Pull the next queued idea THIS sorter accepts (scoped to the sources it has seen); any source if unknown.
+function shiftIdeaForMachine(t){
+  if(t&&t.srcSeen&&t.srcSeen.size){const i=ideaQueue.findIndex(o=>t.srcSeen.has(o.source||'competitor'));return i<0?null:ideaQueue.splice(i,1)[0];}
+  return ideaQueue.length?ideaQueue.splice(0,1)[0]:null;
+}
+// Build a floor-item (rides belts / parks in a machine) from a queued/swept idea.
+function floorIdea(idea){
+  return {kind:'idea',title:idea.title,video_id:idea.video_id,thumb:idea.thumb||'',channel:idea.channel||'',
+    avatar:idea.avatar||'',views:idea.views||0,published:idea.published||'',source:idea.source||'competitor',
+    blurb:idea.blurb||'',category:idea.category||'',itemId:idea.itemId??null,elements:idea.elements?{...idea.elements}:{},prog:.5};
+}
+// The next idea THIS sorter should judge: prefer the unmined queue (scoped to its sources),
+// then sweep the floor for a matching idea already in play — on a belt/drill/grabber, or parked
+// at ANOTHER sorter of the same source — and pull it in. This keeps the sorter dueling its whole
+// pile (small sources like Rundown stay either/or) and never strands ideas that already left the queue.
+function takeIdeaForSorter(t){
+  const q=shiftIdeaForMachine(t); if(q)return q;
+  if(!(t&&t.srcSeen&&t.srcSeen.size))return null;
+  const ok=s=>!!s&&s.kind==='idea'&&!s._done&&t.srcSeen.has(s.source||'competitor');
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const c=grid[y][x];if(!c)continue;
+    if(c.t==='belt'&&ok(c.item)){const it=c.item;c.item=null;updHUD();return it;}
+    if(c.t==='drill'&&ok(c.out)){const it=c.out;c.out=null;updHUD();return it;}
+    if(c.t==='grabber'&&ok(c.held)){const it=c.held;c.held=null;updHUD();return it;}
+    if(c.t==='mach'&&MACH[c.m]&&MACH[c.m].human==='swipe'){
+      if(c!==t&&ok(c.proc)){const it=c.proc;c.proc=null;c.busy=false;updHUD();return it;}  // pull a sibling sorter's parked idea
+      if(ok(c.input)){const it=c.input;c.input=null;updHUD();return it;}                     // (c===t input ok — proc is the left)
+    }
+  }
+  return null;
+}
+// How many ideas THIS sorter still has left to judge (queue + floor, scoped to its sources),
+// not counting the one it's currently showing — drives the accurate "N more waiting" label.
+function poolCountForSorter(t){
+  const scoped=t&&t.srcSeen&&t.srcSeen.size;
+  const ok=s=>!!s&&s.kind==='idea'&&!s._done&&(!scoped||t.srcSeen.has(s.source||'competitor'));
+  let n=scoped?ideaQueue.filter(o=>t.srcSeen.has(o.source||'competitor')).length:ideaQueue.length;
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const c=grid[y][x];if(!c)continue;
+    if(c.t==='belt'&&ok(c.item))n++;
+    else if(c.t==='drill'&&ok(c.out))n++;
+    else if(c.t==='grabber'&&ok(c.held))n++;
+    else if(c.t==='mach'&&MACH[c.m]&&MACH[c.m].human==='swipe'){ if(c!==t&&ok(c.proc))n++; if(ok(c.input))n++; }
+  }
+  return n;
+}
+let delivered = [];
+let curTool='belt', curDir=1, paused=false, speed=1;
+let curDec=null, decisionOpen=false, pkg=null, awaitingSwipe=false, duel=null, discardPile=[];
+let sorterFocus=null;   // the ONE sorter you're currently inside — advanceSorter stays here, never hops to another machine
+let selecting=false, sel=null, clipboard=null, pasteMode=false, rightErasing=false;
+const ZOOM_DEF=1.18;
+let zoom=(()=>{const z=parseFloat(localStorage.getItem('cg_factory_zoom'));return (z&&z>=.6&&z<=2.2)?z:ZOOM_DEF;})();
+function setZoom(z){zoom=Math.max(.6,Math.min(2.2,Math.round(z*20)/20));localStorage.setItem('cg_factory_zoom',zoom);sizeCanvas();buildToolbar();}
+
+// ── custom stations (sandbox): define your own pipeline boxes ──
+const CUSTOM_COLORS=['#3a9ad0','#d07a2a','#52c46e','#d04a6a','#7a6ad0','#2aa39a','#c2a13a','#c558c5'];
+let customStations=[], hiddenBuiltins=new Set(), numKeyMap=[];
+function registerCustom(s){ MACH[s.id]={station:null,out:'custom',col:s.col,ic:s.ic,label:s.name,custom:true}; }
+function loadStations(){
+  try{const d=JSON.parse(localStorage.getItem('cg_factory_stations')||'null');
+    if(d){customStations=Array.isArray(d.custom)?d.custom:[]; hiddenBuiltins=new Set(d.hidden||[]);}}catch(e){}
+  customStations.forEach(registerCustom);
+}
+function saveStations(){localStorage.setItem('cg_factory_stations',JSON.stringify({custom:customStations,hidden:[...hiddenBuiltins]}));}
+function visibleStations(){ return [...BUILTIN_STATIONS.filter(id=>!hiddenBuiltins.has(id)), ...customStations.map(s=>s.id)]; }
+function selectToolByNumber(n){ if(numKeyMap[n-1]){curTool=numKeyMap[n-1];buildToolbar();} }
+
+const $=id=>document.getElementById(id);
+const key=(x,y)=>x+','+y;
+const inb=(x,y)=>x>=0&&y>=0&&x<COLS&&y<ROWS;
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2000);}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function fmtViews(n){n=+n||0;if(n>=1e6)return (n/1e6).toFixed(n>=1e7?0:1).replace(/\.0$/,'')+'M views';if(n>=1e3)return (n/1e3).toFixed(n>=1e4?0:1).replace(/\.0$/,'')+'k views';return n+(n===1?' view':' views');}
+function timeAgo(iso){if(!iso)return '';const t=Date.parse(iso);if(isNaN(t))return '';let s=(Date.now()-t)/1000;if(s<0)s=0;for(const[name,sec]of[['year',31536000],['month',2592000],['week',604800],['day',86400],['hour',3600],['minute',60]]){const v=Math.floor(s/sec);if(v>=1)return v+' '+name+(v>1?'s':'')+' ago';}return 'just now';}
+async function api(p,o){const r=await fetch(p,o);if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||r.status);return r.json();}
+const isMachineTool=id=>!!MACH[id];
+
+// ───────────────────────── toolbar ─────────────────────────
+function buildToolbar(){
+  const tb=$('toolbar'); tb.innerHTML=''; let first=true; numKeyMap=[];
+  const grp=()=>{if(first){first=false;return;}const g=document.createElement('div');g.className='sep';tb.appendChild(g);};   // plain divider between groups (no word labels)
+  const btn=(ic,nm,onclick,tip,extra)=>{const b=document.createElement('div');b.className='tool'+(extra||'');
+    b.innerHTML=`<span class="ic">${ic}</span><span class="nm">${nm}</span>`;if(tip)b.title=tip;b.onclick=onclick;tb.appendChild(b);return b;};
+  // a placeable tool: selectable, gets a 1–9 number-key badge + 🫵 marker
+  const placeBtn=(id,ic,name,tip,you)=>{
+    const b=btn(ic,name,()=>{curTool=id;buildToolbar();},tip,(id===curTool?' sel':'')+(you?' you':''));
+    if(you){const d=document.createElement('span');d.className='youdot';d.textContent='🫵';b.appendChild(d);}
+    if(numKeyMap.length<9){numKeyMap.push(id);const k=document.createElement('span');k.className='numkey';k.textContent=numKeyMap.length;b.appendChild(k);}
+    return b;
+  };
+  TOOLS.forEach(t=>{
+    if(t.grp){
+      grp(t.grp);
+      if(t.stations){   // expand the Stations group dynamically (built-ins + your customs)
+        visibleStations().forEach(id=>{const m=MACH[id];if(!m)return;
+          placeBtn(id,m.ic,m.label,STATION_TIPS[id]||CUSTOM_TIP,!!m.human);});
+        btn('✎','Stations', openStationMgr, 'Add, rename, hide or remove stations — build your own pipeline');
+      }
+      return;
+    }
+    placeBtn(t.id,t.ic,t.name,t.tip||t.name,t.you);
+  });
+  grp('Control');
+  btn(paused?'▶':'⏸', paused?'Run':'Pause', ()=>{paused=!paused;buildToolbar();},
+    paused?'Resume the line':'Pause the line (space)');
+  btn('⏩', speed+'×', ()=>{speed=speed>=4?1:speed*2;buildToolbar();}, 'Run speed — cycles 1× → 2× → 4×');
+  btn('🧹','Clear floor', clearAll, 'Clear the floor layout (your ore + hub stay)');
+  btn('♻️','Wipe DB', clearSandbox, 'Reset the sandbox: delete all produced items from the DB + empty the warehouse (layout stays). Never touches your real cards.');
+  grp('View');
+  btn('➖','Smaller', ()=>setZoom(zoom-0.1), 'Zoom out');
+  btn('⤢', Math.round(zoom*100)+'%', ()=>setZoom(ZOOM_DEF), 'Reset zoom to fit');
+  btn('➕','Bigger', ()=>setZoom(zoom+0.1), 'Zoom in');
+  const h=document.createElement('div');h.className='hint';
+  h.innerHTML='<b>R</b> rotate ('+DIRNAME[curDir]+') · <b>shift-drag</b> select → ⌘C/⌘V · <b>right-drag</b> erase · <b>🫵</b> you decide';
+  tb.appendChild(h);
+}
+
+// ───────────────────────── canvas / input ─────────────────────────
+const cv=$('cv'), ctx=cv.getContext('2d');
+function sizeCanvas(){
+  // Render at the logical TILE grid but scale the whole canvas by `zoom` (and DPR for retina).
+  // Drawing code keeps using TILE coords untouched; only the transform + CSS size change.
+  const dpr=window.devicePixelRatio||1, eff=TILE*zoom;
+  cv.width=Math.round(COLS*TILE*dpr*zoom); cv.height=Math.round(ROWS*TILE*dpr*zoom);
+  cv.style.width=COLS*eff+'px'; cv.style.height=ROWS*eff+'px';
+  ctx.setTransform(dpr*zoom,0,0,dpr*zoom,0,0);
+}
+function tileAt(e){const r=cv.getBoundingClientRect(), eff=TILE*zoom;
+  return [Math.floor((e.clientX-r.left)/eff), Math.floor((e.clientY-r.top)/eff)];}
+let dragging=false, lastTile=null;
+cv.addEventListener('contextmenu',e=>{e.preventDefault();});   // erasing is handled by the right-button drag below
+cv.addEventListener('mousedown',e=>{
+  const[x,y]=tileAt(e);
+  if(e.button===2){ rightErasing=true; lastTile=[x,y]; if(grid[y]?.[x])erase(x,y); return; }   // hold-right + drag = bulk erase
+  if(e.button!==0)return;
+  if(pasteMode){ pasteAt(x,y); return; }               // stamp the copied region
+  if(e.shiftKey){ selecting=true; sel={x0:x,y0:y,x1:x,y1:y}; lastTile=[x,y]; return; }   // shift-drag = select
+  sel=null;                                            // a plain click clears any selection
+  const o=ownerAt(x,y);
+  if(o&&curTool!=='erase'){openMachine(o.t);return;}   // click a machine = open its process
+  dragging=true;lastTile=[x,y];place(x,y);});
+window.addEventListener('mouseup',()=>{dragging=false;rightErasing=false;selecting=false;lastTile=null;});
+// ⌘ + scroll (or trackpad pinch) = zoom toward the cursor
+$('floor').addEventListener('wheel',e=>{
+  if(!(e.metaKey||e.ctrlKey))return;            // ctrlKey = mac trackpad pinch
+  e.preventDefault();
+  const fl=$('floor'), fr=fl.getBoundingClientRect(), r1=cv.getBoundingClientRect();
+  const fx=(e.clientX-r1.left)/r1.width, fy=(e.clientY-r1.top)/r1.height;   // fractional point on the grid
+  const nz=Math.max(.6,Math.min(2.2,zoom*Math.exp(-e.deltaY*0.0015)));
+  if(Math.abs(nz-zoom)<0.0005)return;
+  zoom=Math.round(nz*1000)/1000; localStorage.setItem('cg_factory_zoom',zoom);
+  sizeCanvas(); buildToolbar();
+  // keep the same grid point under the cursor (clamps to 0 → centering takes over when it fits)
+  fl.scrollLeft=Math.max(0, fx*COLS*TILE*zoom-(e.clientX-fr.left));
+  fl.scrollTop =Math.max(0, fy*ROWS*TILE*zoom-(e.clientY-fr.top));
+},{passive:false});
+cv.addEventListener('mousemove',e=>{
+  const[x,y]=tileAt(e);
+  if(selecting){ sel.x1=x; sel.y1=y; return; }                       // grow the marquee
+  if(rightErasing){ if(!lastTile||lastTile[0]!==x||lastTile[1]!==y){ if(inb(x,y))erase(x,y); lastTile=[x,y]; } return; }  // erase along the drag
+  if(!dragging)return;
+  if(!lastTile||lastTile[0]!==x||lastTile[1]!==y){
+    if(curTool==='belt'&&lastTile){
+      const dx=x-lastTile[0], dy=y-lastTile[1]; let d=null;
+      if(Math.abs(dx)+Math.abs(dy)===1){d=dx===1?1:dx===-1?3:dy===1?2:0;}
+      if(d!==null){const pt=grid[lastTile[1]]?.[lastTile[0]];if(pt&&pt.t==='belt')pt.dir=d;curDir=d;}
+      place(x,y);
+    } else if(curTool==='erase'){erase(x,y);}
+    else if(curTool.startsWith('ore')){place(x,y);}   // drag to paint an ore patch
+    lastTile=[x,y];
+  }
+});
+window.addEventListener('keydown',e=>{
+  if(decisionOpen){
+    if(curDec&&curDec.kind==='swipe'){ if(e.key==='ArrowRight')finishDecision(true); if(e.key==='ArrowLeft')finishDecision(false); }
+    if(curDec&&curDec.kind==='duel'){ if(e.key==='ArrowLeft')duelPick('left'); if(e.key==='ArrowRight')duelPick('right'); if(e.key==='ArrowUp'||e.key==='b'||e.key==='B')duelPick('both'); if(e.key==='ArrowDown'||e.key==='n'||e.key==='N')duelPick('none'); }
+    if(e.key==='Escape')closeDecisionPanel();
+    return;
+  }
+  const typing=document.activeElement&&/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
+  if(e.key==='r'||e.key==='R'){if(!typing){curDir=(curDir+1)%4;buildToolbar();}}
+  if(e.key==='Escape'){closeModal();closeHelp();pasteMode=false;sel=null;}   // also drops paste/selection
+  if(e.key===' '&&!typing){e.preventDefault();paused=!paused;buildToolbar();}
+  if(typing)return;
+  // 1–9 select the matching toolbar tool
+  if(/^[1-9]$/.test(e.key)&&!e.metaKey&&!e.ctrlKey&&!e.altKey)selectToolByNumber(+e.key);
+  // selection clipboard: ⌘C copy · ⌘V paste-mode · Delete erase selection
+  if((e.metaKey||e.ctrlKey)&&(e.key==='c'||e.key==='C')){ if(sel)copySelection(); }
+  else if((e.metaKey||e.ctrlKey)&&(e.key==='v'||e.key==='V')){ if(clipboard){pasteMode=true;toast('Paste mode — click to stamp · Esc to stop');} }
+  else if(e.key==='Delete'||e.key==='Backspace'){ if(sel){e.preventDefault();eraseSelection();} }
+});
+
+// ───────────────────────── grid helpers ─────────────────────────
+function at(x,y){return inb(x,y)?grid[y][x]:null;}
+function ownerAt(x,y){               // resolve a cell to its machine anchor tile
+  const t=at(x,y); if(!t)return null;
+  if(t.t==='mach')return {ax:x,ay:y,t};
+  if(t.t==='occ'){const a=at(t.ax,t.ay); if(a&&a.t==='mach')return {ax:t.ax,ay:t.ay,t:a};}
+  return null;
+}
+function regionFree(x,y,w,h){
+  for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++){if(!inb(x+dx,y+dy)||grid[y+dy][x+dx])return false;}
+  return true;
+}
+function front(t,x,y){const[dx,dy]=DIRS[t.dir??1];return [x+dx,y+dy];}
+function back(t,x,y){const[dx,dy]=DIRS[t.dir??1];return [x-dx,y-dy];}
+
+function place(x,y){
+  if(!inb(x,y))return;
+  if(curTool==='erase'){erase(x,y);return;}
+  if(curTool.startsWith('ore')){const ot=curTool.slice(3).toLowerCase();if(ORE_COL[ot]){ore.set(key(x,y),ot);save();}return;}  // paint an ore tile of this type
+  if(curTool==='hub'){if(grid[y][x])return;grid[y][x]={t:'hub'};save();return;}
+  if(curTool==='drill'){
+    if(!ore.has(key(x,y))){toast('Drills must sit on ore');return;}
+    if(grid[y][x]&&grid[y][x].t!=='drill'){return;}
+    grid[y][x]={t:'drill',dir:curDir,cool:0,out:null};save();return;
+  }
+  if(curTool==='grabber'){if(grid[y][x])return;grid[y][x]={t:'grabber',dir:curDir,cool:0,held:null};save();return;}
+  if(curTool==='splitter'){if(grid[y][x])return;grid[y][x]={t:'splitter',dir:curDir,held:null,toggle:0};save();return;}
+  if(curTool==='belt'){if(grid[y][x]&&grid[y][x].t!=='belt')return;grid[y][x]={t:'belt',dir:curDir,item:grid[y][x]?.item||null};save();return;}
+  if(isMachineTool(curTool)){
+    if(!regionFree(x,y,MSIZE,MSIZE)){toast('Need a clear 2×2 space');return;}
+    grid[y][x]={t:'mach',m:curTool,dir:curDir,busy:false,input:null,output:null,proc:null,spin:0,w:MSIZE,h:MSIZE};
+    for(let dy=0;dy<MSIZE;dy++)for(let dx=0;dx<MSIZE;dx++)if(dx||dy)grid[y+dy][x+dx]={t:'occ',ax:x,ay:y};
+    save();
+  }
+}
+function erase(x,y){
+  if(!inb(x,y))return;
+  const o=ownerAt(x,y);
+  if(o){const w=o.t.w||1,h=o.t.h||1;
+    for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++){if(inb(o.ax+dx,o.ay+dy))grid[o.ay+dy][o.ax+dx]=null;}
+    save();return;}
+  if(grid[y][x]){grid[y][x]=null;save();return;}
+  if(ore.has(key(x,y))){ore.delete(key(x,y));save();}   // bare ore tile (no machine on it) → clear the ore
+}
+function clearAll(){if(!confirm('Clear the whole floor? (ore + hub stay)'))return;
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const t=grid[y][x];if(t&&t.t!=='hub')grid[y][x]=null;}
+  closeDecisionPanel();
+  seedHubIfNone();save();}
+function clearSandbox(){
+  if(!confirm('Wipe the sandbox? Deletes ALL produced items from the DB and empties the hub. Floor layout stays. This only touches the Factory sandbox — never your real cards.'))return;
+  api('/api/factory/clear',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
+   .then(r=>{delivered=[];renderWarehouse();updHUD();toast('Sandbox wiped'+(r&&r.deleted!=null?` (${r.deleted} items)`:''));})
+   .catch(e=>toast('Wipe failed: '+e.message));
+}
+
+// ───────────────────────── persistence ─────────────────────────
+function save(){
+  const tiles=[];
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const t=grid[y][x]; if(!t||t.t==='occ')continue;
+    tiles.push({x,y,t:t.t,m:t.m,dir:t.dir});
+  }
+  localStorage.setItem('cg_factory_v2',JSON.stringify({tiles,ore:[...ore]}));
+}
+function load(){
+  let data=null; try{data=JSON.parse(localStorage.getItem('cg_factory_v2')||'null');}catch(e){}
+  if(data&&Array.isArray(data.ore)){
+    ore=new Map();
+    data.ore.forEach(e=>{                                  // new shape: [key,type]; legacy: plain "x,y" string = all copper
+      if(Array.isArray(e)) ore.set(e[0], ORE_COL[e[1]]?e[1]:'copper');
+      else if(typeof e==='string') ore.set(e,'copper');
+    });
+  }
+  if(data&&data.tiles){
+    data.tiles.forEach(c=>{
+      if(!inb(c.x,c.y))return;
+      if(c.t==='belt')grid[c.y][c.x]={t:'belt',dir:c.dir??1,item:null};
+      else if(c.t==='drill')grid[c.y][c.x]={t:'drill',dir:c.dir??1,cool:0,out:null};
+      else if(c.t==='grabber')grid[c.y][c.x]={t:'grabber',dir:c.dir??1,cool:0,held:null};
+      else if(c.t==='splitter')grid[c.y][c.x]={t:'splitter',dir:c.dir??1,held:null,toggle:0};
+      else if(c.t==='hub')grid[c.y][c.x]={t:'hub'};
+      else if(c.t==='mach'&&MACH[c.m]){
+        if(!inb(c.x+MSIZE-1,c.y+MSIZE-1))return;
+        grid[c.y][c.x]={t:'mach',m:c.m,dir:c.dir??1,busy:false,input:null,output:null,proc:null,spin:0,w:MSIZE,h:MSIZE};
+        for(let dy=0;dy<MSIZE;dy++)for(let dx=0;dx<MSIZE;dx++)if(dx||dy)grid[c.y+dy][c.x+dx]={t:'occ',ax:c.x,ay:c.y};
+      }
+    });
+  }
+}
+
+// ───────────────────────── ore + ideas ─────────────────────────
+async function loadOre(){
+  let list=[]; try{list=await api('/api/factory/ore');}catch(e){}
+  ideaQueue=list.map(ideaFrom);   // each item carries its `source` (competitor/best/rundown)
+  if(ore.size===0)seedOreClusters();
+  else migrateOreSources();        // legacy all-copper board → drop iron+stone starter patches in free space
+  updHUD();
+  loadDiscardPile();   // discard pile is backed by CG's Archived status, so it survives reload
+}
+// First-run floor: three labelled ore patches so a fresh board mines all 3 sources out of the box.
+function seedOreClusters(){
+  [['copper',2,2],['iron',7,2],['stone',12,2]].forEach(([type,ox,oy])=>{
+    for(let dy=0;dy<3;dy++)for(let dx=0;dx<3;dx++)if(inb(ox+dx,oy+dy))ore.set(key(ox+dx,oy+dy),type);
+  });
+}
+// A pre-source board only had copper. Add iron + stone starter patches in empty tiles
+// (never under an existing machine/belt) so all three sources are minable after upgrade.
+function migrateOreSources(){
+  let hasIron=false,hasStone=false; ore.forEach(v=>{if(v==='iron')hasIron=true;else if(v==='stone')hasStone=true;});
+  if(hasIron&&hasStone)return;
+  const free=(x,y)=>inb(x,y)&&!grid[y][x];
+  const patch=(type,ox,oy)=>{for(let dy=0;dy<3;dy++)for(let dx=0;dx<3;dx++)if(free(ox+dx,oy+dy))ore.set(key(ox+dx,oy+dy),type);};
+  if(!hasIron)patch('iron',2,11);
+  if(!hasStone)patch('stone',7,11);
+  save();
+}
+// Discard pile mirrors CG's Archived tab — passed/"neither" ideas live there and can be
+// restored to the Ideas tab. Loaded on boot so the pile survives a page reload.
+async function loadDiscardPile(){
+  let list=[]; try{list=await api('/api/factory/archived');}catch(e){}
+  discardPile=list.map(o=>({...ideaFrom(o),source:o.source||'competitor'}));   // archived = real competitor videos
+  updHUD();
+}
+function seedHubIfNone(){
+  let has=false;for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)if(grid[y][x]?.t==='hub')has=true;
+  if(!has)grid[ROWS-3][COLS-4]={t:'hub'};
+}
+function updHUD(){
+  let line=0;for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const t=grid[y][x];
+    if(t&&((t.t==='belt'&&t.item)||(t.t==='grabber'&&t.held)||(t.t==='splitter'&&t.held)||(t.t==='drill'&&t.out)||(t.t==='mach'&&(t.input||t.output||t.busy))))line++;}
+  const pend=countPending();
+  $('hOre').textContent=ideaQueue.length; $('hDeliv').textContent=delivered.length;
+  $('hLine').textContent=line; $('hWait').textContent=pend;
+  const pw=$('pWait'); if(pw)pw.classList.toggle('alert',pend>0);
+  const hd=$('hDiscard'); if(hd)hd.textContent=discardPile.length;
+}
+function countPending(){
+  let n=0;for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const t=grid[y][x];
+    if(t&&t.t==='mach'&&t.busy&&MACH[t.m].human&&t.proc)n++;}
+  return n;
+}
+
+// ───────────────────────── simulation ─────────────────────────
+const BELT_SPD=2.4, GRAB_INT=0.42, DRILL_INT=1.1;
+
+function pushToBelts(item,x,y,preferDir){
+  const order=[]; if(preferDir!=null)order.push(preferDir);
+  for(let d=0;d<4;d++)if(d!==preferDir)order.push(d);
+  for(const d of order){const nx=x+DIRS[d][0],ny=y+DIRS[d][1];const nt=at(nx,ny);
+    if(nt&&nt.t==='belt'&&!nt.item){nt.item=item;item.prog=0;return true;}}
+  return false;
+}
+function outPorts(t,ax,ay){               // outside tiles on the machine's facing side
+  const d=t.dir??1, w=t.w||1, h=t.h||1, p=[];
+  if(d===1)for(let i=0;i<h;i++)p.push([ax+w,ay+i]);
+  else if(d===3)for(let i=0;i<h;i++)p.push([ax-1,ay+i]);
+  else if(d===2)for(let i=0;i<w;i++)p.push([ax+i,ay+h]);
+  else for(let i=0;i<w;i++)p.push([ax+i,ay-1]);
+  return p;
+}
+function perimeter(t,ax,ay){
+  const w=t.w||1,h=t.h||1,p=[];
+  for(let i=0;i<w;i++){p.push([ax+i,ay-1]);p.push([ax+i,ay+h]);}
+  for(let i=0;i<h;i++){p.push([ax-1,ay+i]);p.push([ax+w,ay+i]);}
+  return p;
+}
+function machineOutput(t,ax,ay){
+  if(!t.output)return;
+  for(const[px,py] of outPorts(t,ax,ay)){const f=at(px,py);
+    if(f&&f.t==='belt'&&!f.item){f.item=t.output;t.output.prog=0;t.output=null;updHUD();return;}
+    if(f&&f.t==='hub'){deliver(t.output);t.output=null;updHUD();return;}}
+  for(const[px,py] of perimeter(t,ax,ay)){const f=at(px,py);
+    if(f&&f.t==='belt'&&!f.item){f.item=t.output;t.output.prog=0;t.output=null;updHUD();return;}
+    if(f&&f.t==='hub'){deliver(t.output);t.output=null;updHUD();return;}}
+}
+
+function update(dt){
+  if(paused)return;
+  dt*=speed;
+  // drills
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const t=grid[y][x]; if(!t||t.t!=='drill')continue;
+    if(t.out){ if(pushToBelts(t.out,x,y,t.dir)){t.out=null;updHUD();} continue; }
+    if(!ore.has(key(x,y)))continue;
+    t.cool+=dt;
+    if(t.cool>=DRILL_INT){
+      const src=ORE_SRC[ore.get(key(x,y))]||'competitor';   // mine the source matching THIS ore tile
+      const idea=shiftIdea(src);
+      if(idea){
+        t.cool=0; updHUD();
+        // Don't mint a DB row per mined idea (that 40-at-once burst caused "database
+        // is locked"). The row is created lazily via ensureId() when it reaches the Sorter.
+        t.out={kind:'idea',title:idea.title,video_id:idea.video_id,thumb:idea.thumb||'',channel:idea.channel||'',avatar:idea.avatar||'',views:idea.views||0,published:idea.published||'',source:idea.source||src,blurb:idea.blurb||'',category:idea.category||'',itemId:null,elements:idea.elements?{...idea.elements}:{},prog:.5};
+      }
+    }
+  }
+  // machines
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const t=grid[y][x]; if(!t||t.t!=='mach')continue;
+    machineOutput(t,x,y);
+    if(t.busy){t.spin+=dt;continue;}
+    if(!t.output&&t.keepBuf&&t.keepBuf.length){t.output=t.keepBuf.shift();updHUD();continue;}  // "Make both": flush kept winners down the belt one at a time
+    if(t.input&&!t.output){
+      const it=t.input; t.input=null; t.busy=true; t.spin=0; t.proc=it;
+      (t.srcSeen||(t.srcSeen=new Set())).add(it.source||'competitor');   // which sources feed THIS machine → scopes the duel challenger
+      const spec=MACH[t.m];
+      if(spec.human){ /* parked: machine pulses, you click it to decide */
+        if(spec.human==='swipe'){
+          prefetchSort(it);   // start the AI read now so the swipe is instant when opened
+          if(awaitingSwipe&&decisionOpen&&(!curDec||!curDec.t)&&t===sorterFocus){   // only auto-resume THIS sorter, never hop to another
+            awaitingSwipe=false; openSorter(t);
+          }
+        }
+      }
+      else { runMachine(t,it); }
+    }
+  }
+  // grabbers
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const t=grid[y][x]; if(!t||t.t!=='grabber')continue;
+    t.cool+=dt; if(t.cool<GRAB_INT)continue;
+    if(t.held){if(grabberGive(t,x,y))t.cool=0;} else {if(grabberTake(t,x,y))t.cool=0;}
+  }
+  // splitters — pull one item from behind, push it out to alternating side outputs (even split)
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const t=grid[y][x]; if(!t||t.t!=='splitter')continue;
+    if(t.held)splitterGive(t,x,y); else splitterTake(t,x,y);
+  }
+  // belts
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const t=grid[y][x]; if(!t||t.t!=='belt'||!t.item)continue;
+    const it=t.item;
+    if(it.prog<1)it.prog=Math.min(1,it.prog+BELT_SPD*dt);
+    if(it.prog>=1){
+      const[nx,ny]=front(t,x,y); const nt=at(nx,ny);
+      if(nt&&nt.t==='belt'&&!nt.item){nt.item=it;it.prog=0;t.item=null;}
+      else if(nt&&nt.t==='hub'){deliver(it);t.item=null;updHUD();}
+      else { const o=ownerAt(nx,ny); if(o&&!o.t.input&&!o.t.busy){o.t.input=it;t.item=null;updHUD();} }
+    }
+  }
+}
+
+function grabberTake(g,x,y){
+  const[bx,by]=back(g,x,y); const s=at(bx,by); if(!s)return false;
+  if(s.t==='drill'&&s.out){g.held=s.out;s.out=null;updHUD();return true;}
+  if(s.t==='belt'&&s.item&&s.item.prog>=.5){g.held=s.item;s.item=null;updHUD();return true;}
+  const o=ownerAt(bx,by); if(o&&o.t.output){g.held=o.t.output;o.t.output=null;updHUD();return true;}
+  return false;
+}
+function grabberGive(g,x,y){
+  const[fx,fy]=front(g,x,y); const d=at(fx,fy); if(!d)return false;
+  if(d.t==='belt'&&!d.item){g.held.prog=0;d.item=g.held;g.held=null;updHUD();return true;}
+  if(d.t==='hub'){deliver(g.held);g.held=null;updHUD();return true;}
+  const o=ownerAt(fx,fy); if(o&&!o.t.input&&!o.t.busy){o.t.input=g.held;g.held=null;updHUD();return true;}
+  return false;
+}
+// ── splitter: one input (behind), two outputs (the sides perpendicular to where it faces) ──
+function perpDirs(dir){ return (dir===1||dir===3)?[0,2]:[1,3]; }   // E/W facing → N+S outs; N/S facing → E+W outs
+function splitterTake(t,x,y){
+  const[bx,by]=back(t,x,y); const s=at(bx,by); if(!s)return false;
+  if(s.t==='drill'&&s.out){t.held=s.out;s.out=null;updHUD();return true;}
+  if(s.t==='belt'&&s.item&&s.item.prog>=.5){t.held=s.item;s.item=null;updHUD();return true;}
+  if(s.t==='splitter'&&s.held){t.held=s.held;s.held=null;updHUD();return true;}
+  const o=ownerAt(bx,by); if(o&&o.t.output){t.held=o.t.output;o.t.output=null;updHUD();return true;}
+  return false;
+}
+function splitterGive(t,x,y){
+  const sides=perpDirs(t.dir??1);
+  const order=t.toggle?[sides[1],sides[0]]:sides;   // alternate which side wins → even 50/50 split
+  for(const d of order){
+    const nx=x+DIRS[d][0], ny=y+DIRS[d][1]; const n=at(nx,ny); if(!n)continue;
+    if(n.t==='belt'&&!n.item){t.held.prog=0;n.item=t.held;t.held=null;t.toggle^=1;updHUD();return true;}
+    if(n.t==='hub'){deliver(t.held);t.held=null;t.toggle^=1;updHUD();return true;}
+    if(n.t==='splitter'&&!n.held){n.held=t.held;t.held=null;t.toggle^=1;updHUD();return true;}
+    const o=ownerAt(nx,ny); if(o&&!o.t.input&&!o.t.busy){o.t.input=t.held;t.held=null;t.toggle^=1;updHUD();return true;}
+  }
+  return false;
+}
+
+async function runMachine(t,it){
+  const spec=MACH[t.m];
+  if(!spec.station){   // custom sandbox station — local pass-through stub, no backend call
+    it.elements=it.elements||{}; it.elements[t.m]={custom:spec.label,done:true}; it.kind=spec.out||it.kind||'custom';
+    t.busy=false; t.proc=null; t.output=it; it.prog=.5; updHUD(); return;
+  }
+  if(spec.station==='scripting'){ t.runStart=performance.now(); t.runMs=0; }   // Content Doc: stamp start so its live modal can show an elapsed timer
+  try{
+    if(it.itemId==null){const r=await api('/api/factory/mine',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({title:it.title,source_video_id:it.video_id})});it.itemId=r.id;}
+    const r=await api('/api/factory/process',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({item_id:it.itemId,station:spec.station})});
+    it.elements=r.elements||it.elements; it.kind=spec.out;
+  }catch(e){ it.kind=spec.out; }
+  if(spec.station==='scripting'&&t.runStart)t.runMs=performance.now()-t.runStart;
+  t.busy=false; t.proc=null; t.output=it; it.prog=.5; updHUD();
+}
+function deliver(it){delivered.unshift(it);renderWarehouse();toast('Delivered: '+(it.title||'asset'));}
+
+// ───────────────────────── decisions (human-in-the-loop) ─────────────────────────
+// Click a machine → open its process. Human machines with a parked item open the
+// decision; everything else shows a read-only "what's it doing" panel.
+function openMachine(t){
+  const spec=MACH[t.m];
+  if(spec.human && t.busy && t.proc){
+    decisionOpen=true; $('decBg').classList.add('open');
+    if(spec.human==='swipe')openSorter(t); else { curDec={t,kind:spec.human}; openPackage(t); }
+    return;
+  }
+  if(spec.station==='scripting'){ openScriptDoc(t); return; }   // Content Doc → live timer + full-script modal (scr* zone)
+  showMachineInfo(t,spec);
+}
+function showMachineInfo(t,spec){
+  const it=t.proc||t.output||t.input;
+  $('mTitle').textContent=spec.label;
+  let h='';
+  if(!it){
+    h=`<div class="empty">${spec.human?'Idle — an idea will pulse here when it arrives. Click to decide.':'Idle — feed it from a belt and it runs on its own.'}</div>`;
+  } else {
+    h+=`<div style="font-size:14px;font-weight:600;margin-bottom:6px">${esc(it.title)}</div>`;
+    h+=`<div class="k" style="color:var(--muted);margin-bottom:12px">${t.busy?'⏳ working…':(t.output?'✓ done — heading out on the belt':'in machine')}</div>`;
+    const e=it.elements||{};
+    if(e.sort)h+=`<div class="el"><h3>🔀 Sorter</h3><div class="k">Score ${e.sort.score??'—'}/10</div><pre>${esc(e.sort.verdict||'')}\nAngle: ${esc(e.sort.angle||'')}</pre></div>`;
+    if(e.script)h+=`<div class="el"><h3>✍️ Script</h3>${e.script.hook?`<div class="k">Hook: ${esc(e.script.hook)}</div>`:''}<pre>${esc(e.script.script||'')}</pre></div>`;
+    if(e.packaging)h+=`<div class="el"><h3>📦 Packaging</h3><pre>${(e.packaging.titles||[]).map((tt,n)=>`${n+1}. ${esc(tt)}`).join('\n')}</pre></div>`;
+    if(!Object.keys(e).length)h+='<div class="empty">No elements produced yet.</div>';
+  }
+  $('mBody').innerHTML=h; $('modalBg').classList.add('open');
+}
+// ── Content Doc (scripting) — live modal: elapsed timer while writing, full script when done ──
+let scriptDocT=null, scriptDocTimer=null;
+function scrClock(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+function openScriptDoc(t){
+  scriptDocT=t; $('modalBg').classList.add('open'); renderScriptDoc();
+  if(scriptDocTimer)clearInterval(scriptDocTimer);
+  scriptDocTimer=setInterval(()=>{ if(!$('modalBg').classList.contains('open')){scriptDocStop();return;} renderScriptDoc(); },1000);
+}
+function scriptDocStop(){ if(scriptDocTimer){clearInterval(scriptDocTimer);scriptDocTimer=null;} scriptDocT=null; }
+function scriptDocBodyHtml(sc){
+  let h='';
+  if(sc.title)h+=`<div class="scr-title">${esc(sc.title)}</div>`;
+  if(sc.format)h+=`<span class="scr-chip">${esc(sc.format)}</span>`;
+  if(sc.one_liner)h+=`<div class="k" style="margin:6px 0 12px">${esc(sc.one_liner)}</div>`;
+  if(sc.hook)h+=`<div class="el"><h3>🎬 Intro hook</h3>${sc.intro_show?`<div class="k">SHOW: ${esc(sc.intro_show)}</div>`:''}<pre>${esc(sc.hook)}</pre></div>`;
+  const beats=Array.isArray(sc.beats)?sc.beats:[];
+  beats.forEach((b,i)=>{ if(!b||typeof b!=='object')return;
+    h+=`<div class="el"><h3>Beat ${i+1}${b.name?' — '+esc(b.name):''}</h3>`+
+       (b.show?`<div class="k">🎬 SHOW: ${esc(b.show)}</div>`:'')+
+       (b.say?`<pre>${esc(b.say)}</pre>`:'')+
+       (b.key_point?`<div class="k">🔑 ${esc(b.key_point)}</div>`:'')+`</div>`;
+  });
+  if(sc.retention_hook)h+=`<div class="el"><h3>🔒 Retention (~50%)</h3><pre>${esc(sc.retention_hook)}</pre></div>`;
+  if(sc.outro)h+=`<div class="el"><h3>🎬 Outro / CTA</h3><pre>${esc(sc.outro)}</pre></div>`;
+  if(sc.gift)h+=`<div class="el"><h3>🎁 Skool gift</h3><pre>${esc(sc.gift)}</pre></div>`;
+  if(!beats.length && sc.script)h+=`<pre>${esc(sc.script)}</pre>`;   // fallback: flat render
+  return h;
+}
+function renderScriptDoc(){
+  const t=scriptDocT; if(!t){scriptDocStop();return;}
+  const spec=MACH[t.m]; $('mTitle').textContent='✍️ '+spec.label;
+  const it=t.proc||t.output||t.input; let h='';
+  if(!it){ h='<div class="empty">Idle — feed it an idea from the belt; it writes the content doc automatically.</div>'; }
+  else{
+    h+=`<div style="font-size:14px;font-weight:600;margin-bottom:8px">${esc(it.title)}</div>`;
+    const e=it.elements||{}; const sc=(e.script&&typeof e.script==='object')?e.script:null; const angle=(e.sort&&e.sort.angle)||'';
+    const ready=sc&&sc.script;
+    if(t.busy&&!ready){
+      const secs=t.runStart?(performance.now()-t.runStart)/1000:0;
+      h+=`<div class="scr-run"><div class="scr-spin"></div><div>
+        <div class="scr-run-t">Writing the content doc… ${scrClock(secs)}</div>
+        <div class="k">Full script — hook + beats + outro. Usually <b>1–2 min</b>. No need to click anything; it shows up here when done and rides out on the belt.</div></div></div>`;
+      if(angle)h+=`<div class="el"><h3>🔀 Angle it's writing to</h3><pre>${esc(angle)}</pre></div>`;
+    } else if(ready){
+      const took=t.runMs?` · took ${scrClock(t.runMs/1000)}`:'';
+      h+=`<div class="k" style="color:var(--good);margin-bottom:10px">✓ Content doc ready${took} — ${t.output?'heading out on the belt':'in machine'}</div>`;
+      h+=scriptDocBodyHtml(sc);
+    } else {
+      h+=`<div class="k" style="margin-bottom:10px">No content doc written yet.</div>
+        <button class="scr-go" onclick="scriptDocRun()">✍️ Write Content Doc</button>`;
+    }
+  }
+  $('mBody').innerHTML=h;
+}
+async function scriptDocRun(){
+  const t=scriptDocT; if(!t)return; const it=t.proc||t.input||t.output; if(!it)return;
+  t.output=null; t.proc=it; t.busy=true; t.runStart=performance.now(); t.runMs=0; updHUD(); renderScriptDoc();
+  try{ await runMachine(t,it); }catch(e){}
+  renderScriptDoc();
+}
+function closeDecisionPanel(){
+  // "decide later" on a duel: return the challenger to the ore so it isn't lost (left stays parked).
+  if(duel&&duel.right){const r=duel.right;ideaQueue.unshift({title:r.title,video_id:r.video_id||'',thumb:r.thumb||'',channel:r.channel||'',avatar:r.avatar||'',views:r.views||0,published:r.published||'',source:r.source||'competitor',blurb:r.blurb||'',category:r.category||'',elements:r.elements?{...r.elements}:undefined});}
+  decisionOpen=false; curDec=null; pkg=null; awaitingSwipe=false; duel=null; sorterFocus=null; const dm=$('decBg').querySelector('.modal'); if(dm)dm.classList.remove('duel-wide'); $('decBg').classList.remove('open'); updHUD();
+}
+function nextPendingSwipe(){
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const t=grid[y][x];
+    if(t&&t.t==='mach'&&t.busy&&t.proc&&MACH[t.m].human==='swipe')return t;}
+  return null;
+}
+function moreSwipeComing(){
+  if(ideaQueue.length)return true;
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const t=grid[y][x];if(!t)continue;
+    if(t.t==='drill'&&t.out&&t.out.kind==='idea')return true;
+    if(t.t==='belt'&&t.item&&t.item.kind==='idea')return true;
+    if(t.t==='grabber'&&t.held&&t.held.kind==='idea')return true;
+    if(t.t==='mach'&&MACH[t.m].human==='swipe'&&((t.input&&t.input.kind==='idea')||(t.busy&&t.proc)))return true;}
+  return false;
+}
+function showSwipeWaiting(){
+  $('decTitle').textContent='🔀 Sorter — worth making?';
+  $('decBody').innerHTML=`<div class="qcount" style="padding:34px 0 8px"><span class="spin"></span> waiting for the next idea to reach the Sorter…</div>
+    <div class="qcount"><a href="#" onclick="closeDecisionPanel();return false;">stop sorting</a></div>`;
+}
+function finishDecision(keep){
+  if(!curDec)return;
+  if(curDec.kind==='swipe'&&!curDec.t)return;   // ignore arrows while waiting for the next idea
+  const t=curDec.t;
+  const wasSwipe=curDec.kind==='swipe';
+  if(t&&t.t==='mach'){
+    if(t.proc)t.proc._done=true;   // decided — never let the floor-sweep re-pull this card (kept winners ride the belt out)
+    if(keep){t.output=t.proc; if(t.output){t.output.prog=.5; t.output.kind='sorted'; sortDecision(t.output,'kept');}}   // kept → Sorted tab in CG (source-tinted on the belt out)
+    else{ if(t.proc)sortDecision(t.proc,'archived');                                              // passed → Archived tab in CG
+      if(t.proc&&t.proc.itemId)api('/api/factory/scrap',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({item_id:t.proc.itemId})}).catch(()=>{}); }
+    t.busy=false; t.proc=null;
+  }
+  // Sorter: stay in the panel and chain to the next idea instead of forcing a re-click.
+  if(wasSwipe){ advanceSorter(); return; }
+  closeDecisionPanel(); updHUD();
+}
+async function ensureId(it){
+  if(it.itemId!=null)return;
+  try{const r=await api('/api/factory/mine',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({title:it.title,source_video_id:it.video_id})});it.itemId=r.id;}catch(e){}
+}
+// — Sorter swipe (single, when no challenger is available) —
+function openSwipe(t){
+  curDec={t,kind:'swipe'}; decisionOpen=true; awaitingSwipe=false; duel=null; $('decBg').classList.add('open');
+  const it=t.proc; const others=poolCountForSorter(t);   // how many THIS sorter still has to judge (its sources only)
+  $('decTitle').textContent='🔀 Sorter — worth making?';
+  const thumb=it.thumb?`<img class="swipe-thumb" src="${esc(it.thumb)}" alt="" onerror="this.style.display='none'">`:'';
+  const meta=[]; if(it.views)meta.push(fmtViews(it.views)); if(it.published){const ta=timeAgo(it.published);if(ta)meta.push(ta);}
+  const av=it.avatar?`<img class="swipe-av" src="${esc(it.avatar)}" alt="" onerror="this.style.display='none'">`:'';
+  const src=(it.channel||meta.length)?`<div class="swipe-src">${av}<div class="swipe-srcmeta"><div class="swipe-ch">${esc(it.channel||'Unknown')}</div>${meta.length?`<div class="swipe-views">${esc(meta.join(' · '))}</div>`:''}</div></div>`:'';
+  $('decBody').innerHTML=`
+    ${thumb}
+    ${srcBadge(it.source)}
+    <div class="swipe-title">${esc(it.title)}</div>
+    ${src}
+    <div class="take" id="swTake"><span class="spin"></span> reading the idea…</div>
+    <div class="dec-btns">
+      <button class="bigbtn pass" onclick="finishDecision(false)">✗ Pass<div style="font-weight:400;font-size:11px;opacity:.6">← arrow</div></button>
+      <button class="bigbtn keep" onclick="finishDecision(true)">✓ Keep — make it<div style="font-weight:400;font-size:11px;opacity:.85">→ arrow</div></button>
+    </div>
+    <div class="qcount"><a href="#" onclick="closeDecisionPanel();return false;">decide later</a>${others?` · ${others} more waiting`:''}</div>`;
+  if(it.elements&&it.elements.sort){ renderTake(it.elements.sort); return; }   // cached — no refetch
+  prefetchSort(it);   // compute the read (or pick up the one already running); refreshes this card when ready
+}
+function swipeShowing(it){return decisionOpen&&curDec&&curDec.kind==='swipe'&&curDec.t&&curDec.t.proc===it;}
+function duelShowing(it){return duel&&(duel.left===it||duel.right===it);}
+function onSortReady(it){ if(swipeShowing(it))renderTake(it.elements.sort||{}); if(duelShowing(it))renderDuel(); }
+function onSortFail(it){ if(swipeShowing(it)){const el=$('swTake');if(el)el.textContent='(AI read unavailable — your call.)';} if(duelShowing(it))renderDuel(); }
+function prefetchSort(it){
+  if(!it)return;
+  if(it.elements&&it.elements.sort){ onSortReady(it); return; }
+  if(it._sorting)return; it._sorting=true;
+  const fail=()=>{it._sorting=false; onSortFail(it);};
+  ensureId(it).then(()=>{
+    if(it.itemId==null)return fail();
+    return api('/api/factory/process',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({item_id:it.itemId,station:'sorter'})})
+     .then(r=>{it.elements=r.elements||it.elements; it.kind='sorted'; it._sorting=false; onSortReady(it);});
+  }).catch(fail);
+}
+// ── Sorter dispatcher: duel (two ideas) when a challenger is available, else single ──
+// The challenger is drawn only from sources THIS machine actually receives (t.srcSeen):
+// a blended machine (all 3 ore types belted in) duels across sources; a pure single-
+// source machine only ever duels its own source — that's how "one machine per source"
+// vs "one blended machine" both fall out of the same code.
+function pullChallenger(t){
+  const idea=takeIdeaForSorter(t);   // queue first, then sweep the floor — so rundown/best stay either/or
+  if(!idea)return null;
+  return floorIdea(idea);
+}
+function openSorter(t){
+  sorterFocus=t;            // remember which sorter you're in, so advancing stays here
+  const left=t.proc;
+  const right=pullChallenger(t);
+  if(right) openDuel(t,left,right); else openSwipe(t);
+}
+// After each decision, stay INSIDE the current sorter: refill it from its OWN source pool
+// and keep going, or close back to the floor when its pile is empty. Never hop to another
+// machine's queue (other parked sorters keep pulsing — click them when you want them).
+function advanceSorter(){
+  const t=sorterFocus;
+  if(t&&t.t==='mach'&&MACH[t.m]&&MACH[t.m].human==='swipe'){
+    if(!t.proc){ const idea=takeIdeaForSorter(t); if(idea){ t.proc=floorIdea(idea); t.busy=true; } }   // refill THIS sorter from its whole pile
+    if(t.proc){ awaitingSwipe=false; openSorter(t); updHUD(); return; }
+  }
+  closeDecisionPanel(); updHUD();
+}
+// Persist a Sorter decision, branching on the idea's source:
+//  · competitor (real video row): kept→Sorted, archived→Archived, ore→back to Ideas.
+//  · best / rundown (read-only at origin): only "keep" writes, and it CREATES a new
+//    Sorted idea server-side. Discards/restores never touch his Best archive or the feed.
+function sortDecision(it,decision){
+  if(!it)return;
+  const src=it.source||'competitor';
+  if(src==='competitor'){
+    if(it.video_id)api('/api/factory/sort-decision',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({video_id:it.video_id,decision})}).catch(()=>{});
+    return;
+  }
+  if(decision==='kept')api('/api/factory/sort-decision',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source:src,decision:'kept',title:it.title,blurb:it.blurb||'',category:it.category||'',video_id:it.video_id||''})}).catch(()=>{});
+}
+function discardItem(it){ if(it)discardPile.unshift({title:it.title,video_id:it.video_id||'',thumb:it.thumb||'',channel:it.channel||'',avatar:it.avatar||'',views:it.views||0,published:it.published||'',source:it.source||'competitor',blurb:it.blurb||'',category:it.category||''}); }
+// — Either/or duel —
+function openDuel(t,left,right){
+  curDec={t,kind:'duel'}; decisionOpen=true; awaitingSwipe=false; duel={t,left,right};
+  $('decBg').classList.add('open'); $('decBg').querySelector('.modal').classList.add('duel-wide');
+  $('decTitle').textContent='🔀 Sorter — which one would you actually make?';
+  renderDuel();
+  prefetchSort(left); prefetchSort(right);
+}
+function duelCol(it,side){
+  const thumb=it.thumb?`<img class="duel-thumb" src="${esc(it.thumb)}" alt="" onerror="this.style.display='none'">`:'';
+  const meta=[]; if(it.views)meta.push(fmtViews(it.views)); if(it.published){const ta=timeAgo(it.published);if(ta)meta.push(ta);}
+  const sub=[it.channel,meta.join(' · ')].filter(Boolean).join(' · ');
+  // No AI ranking on the duel cards — Andy didn't want the machine scoring/ranking ideas for him.
+  // Keep only the factual "what they're doing" read.
+  const s=it.elements&&it.elements.sort;
+  const take = (s&&s.doing)
+    ? `<div class="duel-doing">📹 ${esc(s.doing)}</div>`
+    : (s ? `<div class="duel-doing" style="color:#6b7689">—</div>`
+         : (it._sorting ? `<div class="duel-doing"><span class="spin"></span> reading…</div>` : `<div class="duel-doing" style="color:#6b7689">(reading the idea — your call)</div>`));
+  return `<div class="duel-col" onclick="duelPick('${side}')">${thumb}${srcBadge(it.source)}<div class="duel-title">${esc(it.title)}</div><div class="duel-sub">${esc(sub)}</div>${take}</div>`;
+}
+function renderDuel(){
+  if(!duel)return; const {left,right}=duel; const d=discardPile.length;
+  $('decBody').innerHTML=`
+    <div class="duel">${duelCol(left,'left')}<div class="duel-vs">VS</div>${duelCol(right,'right')}</div>
+    <div class="duel-btns">
+      <button class="bigbtn keep" onclick="duelPick('left')">← Make this<div style="font-weight:400;font-size:11px;opacity:.85">left · ← arrow</div></button>
+      <button class="bigbtn both" onclick="duelPick('both')">Make both<div style="font-weight:400;font-size:11px;opacity:.85">↑ arrow / B</div></button>
+      <button class="bigbtn pass" onclick="duelPick('none')">Neither<div style="font-weight:400;font-size:11px;opacity:.6">both to 🗑 · ↓</div></button>
+      <button class="bigbtn keep" onclick="duelPick('right')">Make this →<div style="font-weight:400;font-size:11px;opacity:.85">right · → arrow</div></button>
+    </div>
+    <div class="qcount"><a href="#" onclick="closeDecisionPanel();return false;">decide later</a>${d?` · <a href="#" onclick="openDiscardPile();return false;">🗑 ${d} discarded</a>`:''}</div>`;
+}
+function duelPick(side){
+  if(!duel)return; const {t,left,right}=duel; duel=null;
+  if(left)left._done=true; if(right)right._done=true;   // both decided — never let the floor-sweep re-pull them (kept winners ride the belt out)
+  const scrapDb=(it)=>{ if(it&&it.itemId!=null)api('/api/factory/scrap',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item_id:it.itemId})}).catch(()=>{}); };
+  const queueWin=(it)=>{ if(!it)return; it.prog=.5; it.kind='sorted'; (t.keepBuf||(t.keepBuf=[])).push(it); };   // buffered on the machine → flow down the belt one at a time (source-tinted)
+  if(side==='none'){
+    discardItem(left); discardItem(right); scrapDb(left); scrapDb(right);
+    sortDecision(left,'archived'); sortDecision(right,'archived');                  // both → Archived in CG
+    t.busy=false; t.proc=null;
+  } else if(side==='both'){
+    queueWin(left); queueWin(right);
+    sortDecision(left,'kept'); sortDecision(right,'kept');                          // both → Sorted in CG, both produced
+    t.busy=false; t.proc=null;
+  } else {
+    const win = side==='left'?left:right;
+    const lose= side==='left'?right:left;
+    discardItem(lose); scrapDb(lose); sortDecision(lose,'archived');               // loser → Archived in CG
+    sortDecision(win,'kept');                                                       // winner → Sorted in CG
+    t.output=win; win.prog=.5; win.kind='sorted'; t.busy=false; t.proc=null;   // winner heads out on the belt (source-tinted)
+  }
+  updHUD(); advanceSorter();
+}
+function openDiscardPile(){
+  $('mTitle').textContent='🗑 Discard pile ('+discardPile.length+')';
+  $('mBody').innerHTML = discardPile.length
+    ? discardPile.map((it,i)=>`<div class="wcard" style="border-left-color:#6b5050">
+        <div style="display:flex;gap:9px;align-items:center">
+          ${it.thumb?`<img src="${esc(it.thumb)}" alt="" style="width:78px;aspect-ratio:16/9;object-fit:cover;border-radius:5px;flex:none" onerror="this.style.display='none'">`:''}
+          <div style="min-width:0;flex:1">
+            <div class="t">${esc(it.title)}</div>
+            <div style="color:var(--muted);font-size:11px;margin:2px 0 4px">${esc(it.channel||'')}</div>
+            <a href="#" style="font-size:11.5px" onclick="restoreDiscard(${i});return false;">↩ restore to ore</a>
+          </div>
+        </div></div>`).join('')
+    : '<div class="empty">Nothing discarded yet. Passed ideas land here — recover any of them.</div>';
+  $('modalBg').classList.add('open');
+}
+function restoreDiscard(i){
+  const it=discardPile[i]; if(!it)return; discardPile.splice(i,1);
+  sortDecision(it,'ore');   // competitor → back to Ideas (status='options'); best/rundown = no-op (source untouched)
+  ideaQueue.push({title:it.title,video_id:it.video_id||'',thumb:it.thumb||'',channel:it.channel||'',avatar:it.avatar||'',views:it.views||0,published:it.published||'',source:it.source||'competitor',blurb:it.blurb||'',category:it.category||''});
+  updHUD(); openDiscardPile();
+}
+function renderTake(s){const el=$('swTake');if(!el)return;
+  // No AI ranking (score/verdict) — Andy didn't want the machine ranking ideas for him.
+  // Keep the factual "what they're doing" read + the angle as a neutral prompt.
+  s=s||{};
+  const doing=s.doing?`<div style="color:var(--ink);font-weight:600;margin-bottom:6px;line-height:1.4">📹 ${esc(s.doing)}</div>`:'';
+  el.innerHTML=(doing||s.angle)
+    ? `${doing}${s.angle?`<span style="color:#8b95a7">Angle: ${esc(s.angle)}</span>`:''}`
+    : '(reading the idea — your call.)';}
+// — Packaging title selection —
+function openPackage(t){
+  const it=t.proc;
+  pkg={t,it,pool:[],chosen:[],view:[],step:'loading'};
+  $('decTitle').textContent='📦 Packaging — pick the titles that win';
+  renderPackage();
+  ensureId(it).then(loadTitles);
+}
+function loadTitles(){
+  if(!pkg)return; pkg.step='loading'; renderPackage();
+  api('/api/factory/titles',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({item_id:pkg.it.itemId,title:pkg.it.title})})
+   .then(r=>{if(!pkg)return; pkg.pool=(r.titles||[]).filter(x=>!pkg.chosen.includes(x));
+     pkg.view=pkg.pool.slice(0,3); pkg.step='titles'; renderPackage();})
+   .catch(()=>{if(!pkg)return; pkg.step='titles'; pkg.view=[]; renderPackage();});
+}
+function pickTitle(i){
+  if(!pkg)return; const tt=pkg.view[i]; if(!tt)return;
+  if(!pkg.chosen.includes(tt))pkg.chosen.push(tt);
+  if(pkg.chosen.length>=9)return pkgToThumb();
+  pkg.pool=pkg.pool.filter(x=>!pkg.chosen.includes(x));
+  pkg.view=pkg.pool.slice(0,3);
+  if(!pkg.view.length)return loadTitles();
+  renderPackage();
+}
+function moreTitles(){if(pkg)loadTitles();}
+function pkgToThumb(){
+  if(!pkg)return;
+  pkg.step='thumb'; pkg.thumbs=pkg.thumbs||[]; pkg.selThumb=pkg.selThumb||null;
+  pkg.genKind=pkg.genKind||pkgSuggestKind();
+  renderPackage();
+  ensurePkgCard();   // push titles into a REAL Packaging-tab card (needed for thumbnail gen)
+}
+// concept/abstract → faceless (channel signature); build/tutorial → pixel-face
+function pkgSuggestKind(){
+  const txt=(((pkg&&pkg.chosen)||[]).join(' ')+' '+((pkg&&pkg.it&&pkg.it.title)||'')).toLowerCase();
+  return /\b(build|built|i made|tutorial|how i|step.?by.?step|automate|ship|one.?shot|coded?)\b/.test(txt)?'pixel_face':'faceless';
+}
+function ensurePkgCard(){
+  // Idempotent on the server (reuses the same card_vid stored on the item), so
+  // re-calling on every entry just keeps the card's titles in sync.
+  if(!pkg||!pkg.it||pkg.it.itemId==null||pkg.cardPending)return;
+  pkg.cardPending=true; if(!pkg.cardVid)pkg.cardErr=''; renderPackage();
+  api('/api/factory/package-card',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({item_id:pkg.it.itemId,titles:pkg.chosen})})
+   .then(r=>{if(!pkg)return; pkg.cardPending=false; pkg.cardVid=r.card_vid; pkg.cardVideoId=r.card_video_id; renderPackage();})
+   .catch(e=>{if(!pkg)return; pkg.cardPending=false; if(!pkg.cardVid)pkg.cardErr=String((e&&e.message)||e); renderPackage();});
+}
+function pkgGenThumbs(kind){
+  if(!pkg)return;
+  if(!pkg.cardVid){ pkg.genKind=kind; ensurePkgCard(); return; }   // card still creating — pick up after
+  pkg.genKind=kind; pkg.genBusy=true; pkg.genErr=''; renderPackage();
+  // Faceless = the SOP-grade route (Claude-char ref + bespoke per-title concept + text guard);
+  // pixel-face = the existing gemini route (face refs + brand logo + locked template).
+  const path = kind==='pixel_face' ? '/api/videos/'+pkg.cardVid+'/gemini-pixel-face' : '/api/factory/faceless';
+  const body = kind==='pixel_face' ? {count:3} : {item_id:pkg.it.itemId, count:3};
+  api(path,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)})
+   .then(r=>{if(!pkg)return; pkg.genBusy=false;
+     (r.thumbs||[]).forEach(t=>pkg.thumbs.push({url:t.url,label:t.slot_label,kind:kind}));
+     if(!pkg.selThumb&&pkg.thumbs.length)pkg.selThumb=pkg.thumbs[pkg.thumbs.length-1].url;
+     renderPackage();})
+   .catch(e=>{if(!pkg)return; pkg.genBusy=false; pkg.genErr=String((e&&e.message)||e); renderPackage();});
+}
+function pkgPickThumb(i){ if(pkg&&pkg.thumbs[i]){pkg.selThumb=pkg.thumbs[i].url; renderPackage();} }
+function pkgFinish(){
+  if(!pkg)return; const it=pkg.it;
+  const val={titles:pkg.chosen, thumb:pkg.selThumb||null, card_vid:pkg.cardVid||null};
+  it.elements=it.elements||{}; it.elements.packaging=val; it.kind='packaged';
+  if(it.itemId!=null)api('/api/factory/finalize',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({item_id:it.itemId,thumb_url:pkg.selThumb||''})}).catch(()=>{});
+  finishDecision(true);
+}
+function pkgSource(){
+  const it=pkg&&pkg.it; if(!it)return '';
+  const thumb=it.thumb?`<img class="pkg-thumb" src="${esc(it.thumb)}" alt="" onerror="this.style.display='none'">`:'';
+  const meta=[]; if(it.views)meta.push(fmtViews(it.views)); if(it.published){const ta=timeAgo(it.published);if(ta)meta.push(ta);}
+  const sub=[it.channel,meta.join(' · ')].filter(Boolean).join(' · ');
+  const doingTxt=it.elements&&it.elements.sort&&it.elements.sort.doing;
+  const doing=doingTxt?`<div class="pkg-src-doing">📹 ${esc(doingTxt)}</div>`:'';
+  return `<div class="pkg-src">${thumb}<div class="pkg-srcmeta"><div class="pkg-src-lbl">inspiration</div><div class="pkg-src-title">${esc(it.title||'')}</div>${sub?`<div class="pkg-src-sub">${esc(sub)}</div>`:''}${doing}</div></div>`;
+}
+function renderPackage(){
+  if(!pkg)return; const b=$('decBody');
+  if(pkg.step==='loading'){b.innerHTML=pkgSource()+'<div class="qcount"><span class="spin"></span> generating title options…</div>';return;}
+  const chips=pkg.chosen.length?pkg.chosen.map(c=>`<span class="chip">${esc(c)}</span>`).join(''):'<span style="color:#4a5468">none yet</span>';
+  if(pkg.step==='titles'){
+    b.innerHTML=`
+      ${pkgSource()}
+      <div class="qcount" style="margin-top:0">Chosen <b style="color:var(--gold)">${pkg.chosen.length}</b> / 9</div>
+      <div class="chosen">${chips}</div>
+      <div style="color:var(--muted);font-size:12px;margin:12px 0 6px">Tap the titles you'd actually run:</div>
+      ${pkg.view.length?pkg.view.map((tt,i)=>`<div class="tcard" onclick="pickTitle(${i})">${esc(tt)}</div>`).join(''):'<div class="qcount">no more — generate another batch</div>'}
+      <div class="row-btns">
+        <button class="sbtn" onclick="moreTitles()">↻ 3 more</button>
+        <button class="sbtn" onclick="finishDecision(false)">✗ Scrap</button>
+        <button class="sbtn primary" ${pkg.chosen.length>=9?'':'disabled'} onclick="pkgToThumb()">Thumbnails →</button>
+      </div>
+      ${pkg.chosen.length>0&&pkg.chosen.length<9?`<div class="qcount"><a href="#" onclick="pkgToThumb();return false;">skip — thumbnails with ${pkg.chosen.length}</a></div>`:''}`;
+    return;
+  }
+  if(pkg.step==='thumb'){
+    const card = pkg.cardErr
+      ? `<div class="pkg-card err">⚠ card error: ${esc(pkg.cardErr)} · <a href="#" onclick="pkg.cardVid=null;ensurePkgCard();return false;">retry</a></div>`
+      : (pkg.cardVid
+          ? `<div class="pkg-card ok">✓ Real card #${pkg.cardVid} in your Packaging tab — ${pkg.chosen.length} title${pkg.chosen.length===1?'':'s'} saved</div>`
+          : `<div class="pkg-card"><span class="spin"></span> creating the real Packaging card…</div>`);
+    const grid = pkg.thumbs.length
+      ? `<div class="pthumbs">${pkg.thumbs.map((t,i)=>`<div class="pthumb${pkg.selThumb===t.url?' sel':''}" onclick="pkgPickThumb(${i})"><img src="${esc(t.url)}" alt="" loading="lazy"><span class="pthumb-tag">#${t.label} · ${t.kind==='pixel_face'?'face':'faceless'}</span></div>`).join('')}</div>`
+      : '';
+    const genRow = pkg.genBusy
+      ? `<div class="qcount"><span class="spin"></span> ${pkg.genKind==='faceless'?'designing a concept per title, then rendering':'generating pixel-face'} — ~45–90s…</div>`
+      : `<div class="row-btns">
+           <button class="sbtn${pkg.genKind==='faceless'?' primary':''}" ${pkg.cardVid?'':'disabled'} onclick="pkgGenThumbs('faceless')">🎨 ${pkg.thumbs.length?'+3':'Generate'} faceless</button>
+           <button class="sbtn${pkg.genKind==='pixel_face'?' primary':''}" ${pkg.cardVid?'':'disabled'} onclick="pkgGenThumbs('pixel_face')">🧑 ${pkg.thumbs.length?'+3':'Generate'} pixel-face</button>
+         </div>`;
+    const genErr = pkg.genErr?`<div class="qcount" style="color:#f5747f">gen failed: ${esc(pkg.genErr)}</div>`:'';
+    const hint = pkg.thumbs.length
+      ? `<div style="color:var(--muted);font-size:12px;margin:12px 0 4px">Tap the A-frame — it becomes the card face. Generate more in either style to deepen the bench.</div>`
+      : `<div style="color:var(--muted);font-size:12px;margin:12px 0 4px">Pick a style and generate — <b style="color:var(--ink)">faceless</b> (pixel-art logos/scorecards, concept videos) or <b style="color:var(--ink)">pixel-face</b> (Andy + brand, build/tutorial). Suggested: ${pkg.genKind==='pixel_face'?'pixel-face':'faceless'}.</div>`;
+    b.innerHTML=`
+      ${pkgSource()}
+      <div class="qcount" style="margin-top:0"><b style="color:var(--gold)">${pkg.chosen.length}</b> titles locked</div>
+      <div class="chosen">${chips}</div>
+      ${card}
+      ${hint}
+      ${grid}
+      ${genRow}
+      ${genErr}
+      <div class="row-btns" style="margin-top:16px">
+        <button class="sbtn" onclick="pkg.step='titles';renderPackage()">← titles</button>
+        <button class="sbtn primary" onclick="pkgFinish()">${pkg.selThumb?'Finish — set this thumb ✓':'Finish packaging ✓'}</button>
+      </div>`;
+    return;
+  }
+}
+
+// ───────────────────────── render ─────────────────────────
+let t0=performance.now();
+function loop(now){
+  const dt=Math.min(.06,(now-t0)/1000); t0=now;
+  try{ update(dt); draw(now/1000); }catch(e){ console.error('factory loop error',e); }
+  requestAnimationFrame(loop);
+}
+function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function draw(time){
+  ctx.clearRect(0,0,COLS*TILE,ROWS*TILE);
+  ctx.fillStyle='#0f131b'; ctx.fillRect(0,0,COLS*TILE,ROWS*TILE);
+  ctx.strokeStyle='#161d28'; ctx.lineWidth=1; ctx.beginPath();
+  for(let x=0;x<=COLS;x++){ctx.moveTo(x*TILE+.5,0);ctx.lineTo(x*TILE+.5,ROWS*TILE);}
+  for(let y=0;y<=ROWS;y++){ctx.moveTo(0,y*TILE+.5);ctx.lineTo(COLS*TILE,y*TILE+.5);}
+  ctx.stroke();
+  ore.forEach((type,k)=>{const[x,y]=k.split(',').map(Number);drawOre(x*TILE,y*TILE,type);});
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const t=grid[y][x]; if(!t)continue; const px=x*TILE,py=y*TILE;
+    if(t.t==='belt')drawBelt(px,py,t,time);
+    else if(t.t==='drill')drawDrill(px,py,t,time,ore.get(key(x,y)));
+    else if(t.t==='grabber')drawGrabber(px,py,t,time);
+    else if(t.t==='splitter')drawSplitter(px,py,t,time);
+    else if(t.t==='mach')drawMach(t,x,y,time);
+    else if(t.t==='hub')drawHub(px,py,time);
+  }
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const t=grid[y][x]; if(!t)continue;
+    if(t.t==='belt'&&t.item){const[dx,dy]=DIRS[t.dir];
+      drawItem(x*TILE+TILE/2+dx*(t.item.prog-.5)*TILE, y*TILE+TILE/2+dy*(t.item.prog-.5)*TILE, t.item);}
+    if(t.t==='drill'&&t.out)drawItem(x*TILE+TILE/2, y*TILE+TILE*0.7, t.out, .8);
+    if(t.t==='splitter'&&t.held)drawItem(x*TILE+TILE/2, y*TILE+TILE/2, t.held, .85);
+    if(t.t==='mach'){const w=t.w||1,h=t.h||1;
+      if(t.output)drawItem((x+w-0.5)*TILE,(y+h/2)*TILE,t.output,.95);
+      else if(t.proc)drawItem((x+w/2)*TILE,(y+h/2)*TILE,t.proc,.9);}
+  }
+  drawHover();
+  drawSelection();
+  if(pasteMode)drawPasteGhost();
+}
+// ── selection + copy/paste/erase ──
+function normSel(s){return {x0:Math.max(0,Math.min(s.x0,s.x1)),y0:Math.max(0,Math.min(s.y0,s.y1)),
+  x1:Math.min(COLS-1,Math.max(s.x0,s.x1)),y1:Math.min(ROWS-1,Math.max(s.y0,s.y1))};}
+function copySelection(){
+  if(!sel)return; const {x0,y0,x1,y1}=normSel(sel); const items=[];
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const t=grid[y][x];
+    if(!t||t.t==='occ')continue;   // occ cells are derived from their machine anchor
+    items.push({dx:x-x0,dy:y-y0,t:t.t,m:t.m,dir:t.dir});}
+  clipboard={w:x1-x0+1,h:y1-y0+1,items};
+  toast(items.length?('Copied '+items.length+' — ⌘V to paste'):'Nothing to copy in selection');
+}
+function pasteAt(tx,ty){
+  if(!clipboard)return; let n=0;
+  for(const it of clipboard.items){const x=tx+it.dx,y=ty+it.dy; if(!inb(x,y))continue;
+    if(it.t==='mach'){ if(!MACH[it.m]||!regionFree(x,y,MSIZE,MSIZE))continue;
+      grid[y][x]={t:'mach',m:it.m,dir:it.dir??1,busy:false,input:null,output:null,proc:null,spin:0,w:MSIZE,h:MSIZE};
+      for(let dy=0;dy<MSIZE;dy++)for(let dx=0;dx<MSIZE;dx++)if(dx||dy)grid[y+dy][x+dx]={t:'occ',ax:x,ay:y}; n++; }
+    else if(it.t==='belt'){ if(!grid[y][x]||grid[y][x].t==='belt'){grid[y][x]={t:'belt',dir:it.dir??1,item:null};n++;} }
+    else if(it.t==='grabber'){ if(!grid[y][x]){grid[y][x]={t:'grabber',dir:it.dir??1,cool:0,held:null};n++;} }
+    else if(it.t==='drill'){ if(ore.has(key(x,y))&&(!grid[y][x]||grid[y][x].t==='drill')){grid[y][x]={t:'drill',dir:it.dir??1,cool:0,out:null};n++;} }
+    else if(it.t==='hub'){ if(!grid[y][x]){grid[y][x]={t:'hub'};n++;} }
+  }
+  save(); toast(n?('Pasted '+n):'Nothing fit there (drills need ore · machines need a clear 2×2)');
+}
+function eraseSelection(){
+  if(!sel)return; const {x0,y0,x1,y1}=normSel(sel);
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){ if(grid[y][x])erase(x,y); }
+  toast('Erased selection'); sel=null;
+}
+function drawSelection(){
+  if(!sel)return; const {x0,y0,x1,y1}=normSel(sel);
+  const px=x0*TILE,py=y0*TILE,w=(x1-x0+1)*TILE,h=(y1-y0+1)*TILE;
+  ctx.fillStyle='rgba(245,185,66,.10)';ctx.fillRect(px,py,w,h);
+  ctx.strokeStyle='rgba(245,185,66,.9)';ctx.lineWidth=1.5;ctx.setLineDash([6,4]);
+  ctx.strokeRect(px+.75,py+.75,w-1.5,h-1.5);ctx.setLineDash([]);
+}
+function drawPasteGhost(){
+  if(!clipboard||!hoverTile)return; const[hx,hy]=hoverTile;
+  ctx.save();ctx.globalAlpha=.55;
+  for(const it of clipboard.items){const x=hx+it.dx,y=hy+it.dy; if(!inb(x,y))continue;
+    const s=(it.t==='mach')?MSIZE*TILE:TILE; const col=(it.t==='mach'&&MACH[it.m])?MACH[it.m].col:'#7fd0ff';
+    ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.strokeRect(x*TILE+1.5,y*TILE+1.5,s-3,s-3);
+    ctx.fillStyle=col;ctx.globalAlpha=.16;ctx.fillRect(x*TILE+1.5,y*TILE+1.5,s-3,s-3);ctx.globalAlpha=.55;}
+  ctx.restore();
+}
+function drawOre(px,py,type){
+  const c=ORE_COL[type]||ORE_COL.copper;   // color the tile by ore type (copper/iron/stone)
+  ctx.fillStyle=c.base; rrect(px+1,py+1,TILE-2,TILE-2,4); ctx.fill();
+  ctx.fillStyle=c.fleck;
+  const dots=[[8,9],[20,7],[14,16],[24,20],[9,23],[26,12]];
+  dots.forEach(([dx,dy],i)=>{ctx.globalAlpha=.55+.25*((i%3)/2);ctx.beginPath();
+    ctx.arc(px+dx,py+dy,2.1+(i%2),0,7);ctx.fill();}); ctx.globalAlpha=1;
+}
+function drawBelt(px,py,t,time){
+  ctx.save();
+  ctx.beginPath();ctx.rect(px,py,TILE,TILE);ctx.clip();
+  ctx.translate(px+TILE/2,py+TILE/2);
+  ctx.rotate(((t.dir??1)-1)*Math.PI/2);
+  ctx.fillStyle='#2b333f'; ctx.fillRect(-TILE/2,-TILE/2+3,TILE,TILE-6);
+  ctx.strokeStyle='#3c485c';ctx.lineWidth=2;ctx.beginPath();
+  ctx.moveTo(-TILE/2,-TILE/2+4);ctx.lineTo(TILE/2,-TILE/2+4);
+  ctx.moveTo(-TILE/2, TILE/2-4);ctx.lineTo(TILE/2, TILE/2-4); ctx.stroke();
+  ctx.strokeStyle='#4a5870';ctx.lineWidth=2.2;ctx.lineCap='round';ctx.lineJoin='round';   // constant — belts don't light up when carrying an item
+  const gap=12, off=(time*BELT_SPD*gap)%gap;
+  for(let cx=-TILE/2-gap+off; cx<TILE/2+gap; cx+=gap){
+    ctx.beginPath();ctx.moveTo(cx-3,-5);ctx.lineTo(cx+3,0);ctx.lineTo(cx-3,5);ctx.stroke();}
+  ctx.restore();
+}
+function drawDrill(px,py,t,time,otype){
+  drawOre(px,py,otype);
+  ctx.fillStyle='#2b3445'; rrect(px+3,py+3,TILE-6,TILE-6,5); ctx.fill();
+  ctx.strokeStyle='#4a5a72';ctx.lineWidth=1.5;rrect(px+3,py+3,TILE-6,TILE-6,5);ctx.stroke();
+  ctx.font='15px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('⛏',px+TILE/2,py+TILE/2+(t.out?0:Math.sin(time*8)*1.5));
+  const[dx,dy]=DIRS[t.dir??1];ctx.fillStyle='#caa53e';ctx.beginPath();
+  ctx.arc(px+TILE/2+dx*(TILE/2-3),py+TILE/2+dy*(TILE/2-3),2.6,0,7);ctx.fill();
+}
+function drawGrabber(px,py,t,time){
+  const cx=px+TILE/2, cy=py+TILE/2; const[dx,dy]=DIRS[t.dir??1];
+  const fa=Math.atan2(dy,dx), ba=fa+Math.PI;
+  const p=Math.min(1,(t.cool||0)/GRAB_INT);
+  const e=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+  const ang=t.held?(ba+(fa-ba)*e):(fa+(ba-fa)*e);
+  ctx.fillStyle='#241c2e'; rrect(px+6,py+6,TILE-12,TILE-12,5); ctx.fill();
+  ctx.strokeStyle='#5a4a6e';ctx.lineWidth=1.5; rrect(px+6,py+6,TILE-12,TILE-12,5); ctx.stroke();
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(time*3*(t.held?2:1));
+  ctx.strokeStyle='#7a6a90';ctx.lineWidth=1.6;
+  for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.beginPath();
+    ctx.moveTo(Math.cos(a)*3.5,Math.sin(a)*3.5);ctx.lineTo(Math.cos(a)*6,Math.sin(a)*6);ctx.stroke();}
+  ctx.restore();
+  ctx.fillStyle='#3a2f48';ctx.beginPath();ctx.arc(cx,cy,4,0,7);ctx.fill();
+  const len=13, tx=cx+Math.cos(ang)*len, ty=cy+Math.sin(ang)*len;
+  ctx.strokeStyle=t.held?'#f5b942':'#9a86b2';ctx.lineWidth=3;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(tx,ty);ctx.stroke();
+  ctx.lineWidth=2;ctx.beginPath();
+  ctx.moveTo(tx,ty);ctx.lineTo(tx+Math.cos(ang+.5)*4,ty+Math.sin(ang+.5)*4);
+  ctx.moveTo(tx,ty);ctx.lineTo(tx+Math.cos(ang-.5)*4,ty+Math.sin(ang-.5)*4);ctx.stroke();
+  if(t.held)drawItem(tx,ty,t.held,.72);
+}
+function drawSplitter(px,py,t,time){
+  const cx=px+TILE/2, cy=py+TILE/2;
+  ctx.fillStyle='#16302f'; rrect(px+3,py+3,TILE-6,TILE-6,5); ctx.fill();
+  ctx.strokeStyle='#2f9c8f';ctx.lineWidth=1.5; rrect(px+3,py+3,TILE-6,TILE-6,5); ctx.stroke();
+  ctx.strokeStyle='#5fd0c0';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';
+  const[ix,iy]=DIRS[t.dir??1];                                  // input stub (from behind)
+  ctx.beginPath();ctx.moveTo(cx-ix*(TILE/2-4),cy-iy*(TILE/2-4));ctx.lineTo(cx-ix*4,cy-iy*4);ctx.stroke();
+  perpDirs(t.dir??1).forEach(d=>{const[dx,dy]=DIRS[d];          // two side outputs with arrowheads
+    const ex=cx+dx*(TILE/2-4), ey=cy+dy*(TILE/2-4), a=Math.atan2(dy,dx);
+    ctx.beginPath();ctx.moveTo(cx+dx*3,cy+dy*3);ctx.lineTo(ex,ey);
+    ctx.moveTo(ex,ey);ctx.lineTo(ex+Math.cos(a+2.5)*4,ey+Math.sin(a+2.5)*4);
+    ctx.moveTo(ex,ey);ctx.lineTo(ex+Math.cos(a-2.5)*4,ey+Math.sin(a-2.5)*4);ctx.stroke();});
+  ctx.fillStyle='#5fd0c0';ctx.beginPath();ctx.arc(cx,cy,2.4,0,7);ctx.fill();
+}
+function drawMach(t,ax,ay,time){
+  const spec=MACH[t.m]; const px=ax*TILE,py=ay*TILE; const w=(t.w||1)*TILE,h=(t.h||1)*TILE;
+  // read the machine's state so the floor is legible at a glance
+  let top='', scol=spec.col, pulse=false;
+  if(spec.human && t.busy && t.proc){ top='🫵 TAP'; scol='#f5b942'; pulse=true; }
+  else if(t.busy){ top='⚙ WORKING'; scol='#f5b942'; }
+  else if(t.output){ top='✓ DONE'; scol='#52c46e'; }
+  else if(t.input){ top='● LOADING'; scol=spec.col; }
+  else if(spec.human){ top='🫵'; scol='#caa53e'; }
+  // body
+  ctx.fillStyle=spec.col; ctx.globalAlpha=.20; rrect(px+3,py+3,w-6,h-6,9); ctx.fill(); ctx.globalAlpha=1;
+  ctx.strokeStyle=pulse?'#f5b942':(t.output?'#52c46e':spec.col);ctx.lineWidth=2.5;rrect(px+3,py+3,w-6,h-6,9);ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,.12)';
+  [[px+10,py+10],[px+w-10,py+10],[px+10,py+h-10],[px+w-10,py+h-10]].forEach(([bx,by])=>{ctx.beginPath();ctx.arc(bx,by,1.8,0,7);ctx.fill();});
+  // icon + name
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font='26px sans-serif';ctx.fillStyle='#fff';ctx.fillText(spec.ic,px+w/2,py+h/2);
+  ctx.fillStyle=spec.col;ctx.font='bold 9.5px sans-serif';
+  ctx.fillText(spec.label.toUpperCase(),px+w/2,py+h-12);
+  // state line (top)
+  if(top){ctx.font='bold 9px sans-serif';ctx.fillStyle=scol;ctx.fillText(top,px+w/2,py+11);}
+  // output direction dot
+  const[dx,dy]=DIRS[t.dir??1];ctx.fillStyle=spec.col;ctx.beginPath();
+  ctx.arc(px+w/2+dx*(w/2-3),py+h/2+dy*(h/2-3),3,0,7);ctx.fill();
+  // a station that needs you gets a soft pulsing border; working machines just show the WORKING label (no spinner)
+  if(pulse){ctx.globalAlpha=.35+.45*Math.sin(time*4);ctx.strokeStyle='#f5b942';ctx.lineWidth=2.5;
+    rrect(px+4,py+4,w-8,h-8,8);ctx.stroke();ctx.globalAlpha=1;}
+}
+function drawHub(px,py,time){
+  ctx.fillStyle='#1a1306'; rrect(px+1,py+1,TILE-2,TILE-2,6); ctx.fill();
+  const g=2+Math.sin(time*3)*1;
+  ctx.strokeStyle='#f5b942';ctx.lineWidth=2;rrect(px+2-g/2,py+2-g/2,TILE-4+g,TILE-4+g,6);ctx.stroke();
+  ctx.font='15px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('🏠',px+TILE/2,py+TILE/2);
+}
+function drawItem(cx,cy,it,scale){
+  const s=(scale||1)*TILE*0.42;
+  const c=(it.kind==='sorted'&&SORTED_COL[it.source||'competitor'])||KINDCOL[it.kind]||'#8b95a7';   // sorted → source-tinted
+  ctx.fillStyle=c; rrect(cx-s/2,cy-s/2,s,s,3); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.4)';ctx.lineWidth=1;rrect(cx-s/2,cy-s/2,s,s,3);ctx.stroke();
+  ctx.fillStyle='rgba(0,0,0,.65)';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(KINDGLYPH[it.kind]||'·',cx,cy+.5);
+}
+let hoverTile=null;
+cv.addEventListener('mousemove',e=>{hoverTile=tileAt(e);});
+cv.addEventListener('mouseleave',()=>{hoverTile=null;});
+function drawHover(){
+  if(!hoverTile)return;const[x,y]=hoverTile;if(!inb(x,y))return;
+  if(isMachineTool(curTool)){
+    const free=regionFree(x,y,MSIZE,MSIZE);
+    ctx.strokeStyle=free?'rgba(90,200,130,.7)':'rgba(220,90,90,.7)';ctx.lineWidth=1.5;
+    ctx.strokeRect(x*TILE+1,y*TILE+1,MSIZE*TILE-2,MSIZE*TILE-2);
+    const[dx,dy]=DIRS[curDir];ctx.fillStyle=free?'rgba(90,200,130,.85)':'rgba(220,90,90,.85)';
+    ctx.beginPath();ctx.arc(x*TILE+MSIZE*TILE/2+dx*(MSIZE*TILE/2-4),y*TILE+MSIZE*TILE/2+dy*(MSIZE*TILE/2-4),3,0,7);ctx.fill();
+    return;
+  }
+  ctx.strokeStyle='rgba(245,185,66,.6)';ctx.lineWidth=1.5;ctx.strokeRect(x*TILE+1,y*TILE+1,TILE-2,TILE-2);
+  if(['belt','grabber','drill'].includes(curTool)){
+    const[dx,dy]=DIRS[curDir];ctx.fillStyle='rgba(245,185,66,.5)';
+    ctx.beginPath();ctx.arc(x*TILE+TILE/2+dx*10,y*TILE+TILE/2+dy*10,2.5,0,7);ctx.fill();
+  }
+}
+
+// ───────────────────────── warehouse + inspector ─────────────────────────
+function tagsFor(it){
+  const e=it.elements||{};const out=[];
+  if(e.sort)out.push(`<span class="tag${(e.sort.score>=7)?' good':''}">sorted${e.sort.score!=null?' '+e.sort.score:''}</span>`);
+  if(e.script)out.push('<span class="tag good">script</span>');
+  if(e.packaging)out.push(`<span class="tag good">📦 ${(e.packaging.titles||[]).length} titles</span>`);
+  if(e.voiceover)out.push('<span class="tag">voiceover</span>');
+  if(e.edit)out.push('<span class="tag">edit</span>');
+  if(e.publish)out.push('<span class="tag good">published</span>');
+  return out.join('');
+}
+function renderWarehouse(){
+  $('wN').textContent=delivered.length; updHUD();
+  const el=$('wList');
+  if(!delivered.length){el.innerHTML='<div class="empty">Deliver an asset to the hub.</div>';return;}
+  el.innerHTML=delivered.map((it,i)=>`<div class="wcard" onclick="inspect(${i})">
+    <div class="t">${esc(it.title)}</div><div class="tags">${tagsFor(it)}</div></div>`).join('');
+}
+function inspect(i){
+  const it=delivered[i];if(!it)return;
+  $('mTitle').textContent=it.title; const e=it.elements||{};let h='';
+  if(e.sort)h+=`<div class="el"><h3>🔀 Sorter</h3><div class="k">Score ${e.sort.score??'—'}/10 · ${esc(e.sort.audience||'')}</div><pre>${esc(e.sort.verdict||'')}\n\nAngle: ${esc(e.sort.angle||'')}</pre></div>`;
+  if(e.script)h+=`<div class="el"><h3>✍️ Script</h3>${e.script.hook?`<div class="k">Hook: ${esc(e.script.hook)}</div>`:''}<pre>${esc(e.script.script||'')}</pre></div>`;
+  if(e.packaging)h+=`<div class="el"><h3>📦 Packaging</h3><pre>${(e.packaging.titles||[]).map((t,n)=>`${n+1}. ${esc(t)}`).join('\n')||'—'}</pre></div>`;
+  if(e.voiceover)h+=`<div class="el"><h3>🎙️ Voiceover</h3><pre>status: ${esc(e.voiceover.status)} · ${esc(e.voiceover.engine||'')}\nwords: ${e.voiceover.words} · ~${e.voiceover.est_seconds}s</pre></div>`;
+  if(e.edit)h+=`<div class="el"><h3>✂️ Edit</h3><pre>${esc(e.edit.note||'')}</pre></div>`;
+  if(e.publish)h+=`<div class="el"><h3>🚀 Publish</h3><pre>${esc(e.publish.note||'')}</pre></div>`;
+  if(!h)h='<div class="empty">Raw idea — run it through the machines before the hub.</div>';
+  $('mBody').innerHTML=h; $('modalBg').classList.add('open');
+}
+function closeModal(){$('modalBg').classList.remove('open');}
+function openHelp(){$('helpBg').classList.add('open');}
+function closeHelp(){$('helpBg').classList.remove('open');localStorage.setItem('cg_factory_help','1');}
+
+// ───────────────────────── warehouse collapse ─────────────────────────
+function toggleWare(){
+  const m=$('main'), closed=m.classList.toggle('ware-collapsed');
+  localStorage.setItem('cg_factory_ware',closed?'closed':'open');
+}
+
+// ───────────────────────── station manager (sandbox) ─────────────────────────
+function openStationMgr(){ $('mTitle').textContent='🏭 Stations — build your pipeline'; renderStationMgr(); $('modalBg').classList.add('open'); }
+function stMgrOpen(){ return $('modalBg').classList.contains('open') && $('mTitle').textContent.indexOf('Stations')>=0; }
+function renderStationMgr(){
+  const row=(ic,col,name,extra,btnHtml,off)=>`<div class="streq${off?' off':''}">
+    <span class="stic" style="background:${col}22;border-color:${col}">${ic}</span>
+    <span class="stname">${esc(name)}${extra||''}</span>${btnHtml}</div>`;
+  const builtins=BUILTIN_STATIONS.map(id=>{const m=MACH[id],off=hiddenBuiltins.has(id);
+    return row(m.ic,m.col,m.label,m.human?' <span class="styou">🫵 you decide</span>':'',
+      `<button class="stbtn" onclick="toggleBuiltin('${id}')">${off?'Show':'Hide'}</button>`,off);}).join('');
+  const customs=customStations.length
+    ? customStations.map(s=>row(esc(s.ic),s.col,s.name,' <span class="stcustom">custom</span>',
+        `<button class="stbtn danger" onclick="removeStation('${s.id}')">Remove</button>`,false)).join('')
+    : '<div class="empty" style="padding:8px;text-align:left">No custom stations yet — add one below.</div>';
+  $('mBody').innerHTML=`
+    <p style="color:var(--muted);margin:0 0 6px;font-size:12.5px;line-height:1.55">Build your own pipeline. Hide the stations you don't use, or add your own boxes — e.g. split <b>Packaging</b> into separate <b>Thumbnail</b> and <b>Title</b> steps. Custom stations are sandbox pass-throughs: they mark the step so you can lay out the flow, then place them on the floor like any machine.</p>
+    <div class="sthd">Built-in</div>${builtins}
+    <div class="sthd">Custom</div>${customs}
+    <div class="staddrow">
+      <input id="stIc" class="stinput ic" maxlength="2" placeholder="🎨" title="emoji">
+      <input id="stName" class="stinput" maxlength="22" placeholder="New station name (e.g. Thumbnail)" onkeydown="if(event.key==='Enter')addCustomStation(this.value,$('stIc').value)">
+      <button class="sbtn primary" onclick="addCustomStation($('stName').value,$('stIc').value)">＋ Add</button>
+    </div>
+    <div class="row-btns" style="margin-top:8px"><button class="sbtn" onclick="resetStations()">Reset to default</button></div>`;
+  const nf=$('stName'); if(nf)nf.focus();
+}
+function addCustomStation(name,ic){
+  name=(name||'').trim(); if(!name){const f=$('stName');if(f)f.focus();return;}
+  ic=(ic||'').trim()||'⚙';
+  const id='c'+Date.now().toString(36);
+  const col=CUSTOM_COLORS[customStations.length%CUSTOM_COLORS.length];
+  const s={id,ic,name,col}; customStations.push(s); registerCustom(s); saveStations(); buildToolbar();
+  toast('Added station: '+name); if(stMgrOpen())renderStationMgr();
+}
+function removeStation(id){
+  const m=MACH[id]; if(!m)return;
+  if(m.custom){ customStations=customStations.filter(s=>s.id!==id); eraseMachinesOfType(id); delete MACH[id]; if(curTool===id)curTool='belt'; }
+  else { hiddenBuiltins.add(id); }
+  saveStations(); buildToolbar(); if(stMgrOpen())renderStationMgr();
+}
+function toggleBuiltin(id){ if(hiddenBuiltins.has(id))hiddenBuiltins.delete(id); else hiddenBuiltins.add(id);
+  saveStations(); buildToolbar(); if(stMgrOpen())renderStationMgr(); }
+function resetStations(){
+  if(!confirm('Reset stations to default? Removes all custom stations (and any you placed on the floor) and shows all built-ins.'))return;
+  customStations.forEach(s=>{eraseMachinesOfType(s.id);delete MACH[s.id];});
+  customStations=[]; hiddenBuiltins=new Set(); curTool='belt';
+  saveStations(); buildToolbar(); if(stMgrOpen())renderStationMgr(); toast('Stations reset');
+}
+function eraseMachinesOfType(id){
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const t=grid[y][x];
+    if(t&&t.t==='mach'&&t.m===id){const w=t.w||1,h=t.h||1;
+      for(let dy=0;dy<h;dy++)for(let dx=0;dx<w;dx++)if(inb(x+dx,y+dy))grid[y+dy][x+dx]=null;}}
+  save();
+}
+
+// ───────────────────────── boot ─────────────────────────
+async function boot(){
+  loadStations();   // register custom stations into MACH BEFORE load() so saved customs reload
+  if(localStorage.getItem('cg_factory_ware')==='closed')$('main').classList.add('ware-collapsed');
+  sizeCanvas(); buildToolbar(); load(); await loadOre(); seedHubIfNone(); save();
+  renderWarehouse(); requestAnimationFrame(loop);
+  if(!localStorage.getItem('cg_factory_help')) openHelp();
+}
+boot();
+</script>
+</body>
+</html>
